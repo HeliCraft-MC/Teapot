@@ -1,10 +1,7 @@
-// types/nitro.d.ts
-import type { Pool } from 'mysql2/promise';
-import type { NitroApp } from 'nitropack';
+import type { Database } from 'better-sqlite3'
 
 declare module 'nitropack' {
     interface NitroApp {
-        /** Пул соединений MySQL */
-        mysqlPool: Pool;
+        sqlite: Database
     }
 }

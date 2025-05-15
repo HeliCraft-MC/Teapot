@@ -12,9 +12,13 @@
   "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee",
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/better-sqlite3": "^7.6.13",
     "bcrypt": "^6.0.0",
+    "better-sqlite3": "^11.10.0",
     "dotenv": "^16.5.0",
+    "file-type": "^20.5.0",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.14.1"
+    "mysql2": "^3.14.1",
+    "sharp": "^0.34.1"
   }
 }

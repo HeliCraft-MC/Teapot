@@ -1,11 +1,8 @@
-import {refreshUser} from "~/utils/auth.utils";
-
-
 export default defineEventHandler(async (event) => {
-    const { nickname, refreshToken } = await readBody(event)
+    const { uuid, refreshToken } = await readBody(event)
 
     try {
-        const { tokens, uuid, nickname: userNickname } = await refreshUser(nickname, refreshToken)
+        const { tokens, uuid: newUuid, nickname: userNickname } = await refreshUser(uuid, refreshToken)
         setCookie(event, 'refreshToken', tokens.refreshToken, {
             httpOnly: true,
             secure:   true,
@@ -13,7 +10,8 @@ export default defineEventHandler(async (event) => {
             maxAge:   7 * 24 * 60 * 60
         })
         return {
-            uuid,
+            accessToken: tokens.accessToken,
+            uuid: newUuid,
             nickname: userNickname
         }
     } catch (e) {

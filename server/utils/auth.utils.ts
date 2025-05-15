@@ -3,17 +3,20 @@ import { AuthUser } from '~/interfaces/mysql.types'
 
 
 /**
- * Checks user password and generate tokens
- * 
- * @param nickname : string
- * @param password : string
+ * Logs in a user by validating the provided nickname and password.
+ * Throws an error if the user is not found or the password is incorrect.
+ *
+ * @param {string} nickname - The nickname of the user attempting to log in.
+ * @param {string} password - The plain-text password provided by the user.
+ * @return {Promise<{ tokens: object, uuid: string, nickname: string }>} A promise that resolves to an object containing the user's tokens, UUID, and nickname.
+ * @throws {Error} Throws an error if the user is not found or the password is incorrect.
  */
 export async function loginUser(nickname: string, password: string) {
     const db = useDatabase()
     const req = db.prepare('SELECT * FROM AUTH WHERE LOWERCASENICKNAME = ?')
-    const user = await req.get(nickname) as AuthUser
+    const user = await req.get(nickname.toLowerCase()) as AuthUser
 
-    if (!user || !user.HASH || !user.NICKNAME || !user.UUID_WR) {
+    if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({
             statusCode: 404,
             statusMessage: 'User not found',
@@ -23,7 +26,7 @@ export async function loginUser(nickname: string, password: string) {
         })
     }
 
-    if (!bcrypt.compareSync(password, user.HASH)) {
+    if (!(await bcrypt.compare(password, user.HASH))) {
         throw createError({
             statusCode: 401,
             statusMessage: 'Invalid password',
@@ -35,21 +38,23 @@ export async function loginUser(nickname: string, password: string) {
 
     const tokens = generateTokens(user)
 
-    return { tokens, uuid: user.UUID_WR, nickname: user.NICKNAME }
+    return { tokens, uuid: user.UUID, nickname: user.NICKNAME }
 }
 
 /**
- * Refresh user tokens
+ * Refreshes the user data by validating the provided refresh token and regenerating tokens if valid.
  *
- * @param nickname : string
- * @param refreshToken : string
+ * @param {string} uuid - The unique identifier of the user.
+ * @param {string} refreshToken - The refresh token to be validated for the user.
+ * @return {Promise<{tokens: object, uuid: string, nickname: string}>} A promise that resolves with the regenerated tokens, user's UUID, and nickname if the refresh token is valid.
+ * @throws {Error} Throws an error if the user is not found or if the refresh token is invalid.
  */
-export async function refreshUser(nickname: string, refreshToken: string) {
+export async function refreshUser(uuid: string, refreshToken: string) {
     const db = useDatabase()
-    const req = db.prepare('SELECT * FROM AUTH WHERE LOWERCASENICKNAME = ?')
-    const user = await req.get(nickname) as AuthUser
+    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ?')
+    const user = await req.get(uuid) as AuthUser
 
-    if (!user || !user.HASH || !user.NICKNAME || !user.UUID_WR) {
+    if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({
             statusCode: 404,
             statusMessage: 'User not found',
@@ -58,15 +63,42 @@ export async function refreshUser(nickname: string, refreshToken: string) {
             }
         })
     }
-    if(verifyToken(refreshToken)) {
+    if(verifyTokenWithCredentials(refreshToken, user)) {
         const tokens = generateTokens(user)
-        return { tokens, uuid: user.UUID_WR, nickname: user.NICKNAME }
+        return { tokens, uuid: user.UUID, nickname: user.NICKNAME }
     } else {
         throw createError({
             statusCode: 401,
             statusMessage: 'Invalid refresh token',
             data: {
                 statusMessageRu: 'Неверный токен обновления',
+            }
+        })
+    }
+}
+
+export async function checkAuth(uuid: string, accessToken: string) {
+    const db = useDatabase()
+    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ?')
+    const user = await req.get(uuid) as AuthUser
+
+    if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
+        throw createError({
+            statusCode: 401,
+            statusMessage: 'Not authorized',
+            data: {
+                statusMessageRu: 'Не авторизован',
+            }
+        })
+    }
+    if(verifyTokenWithCredentials(accessToken, user)) {
+        return true
+    } else {
+        throw createError({
+            statusCode: 401,
+            statusMessage: 'Not authorized',
+            data: {
+                statusMessageRu: 'Не авторизован',
             }
         })
     }
