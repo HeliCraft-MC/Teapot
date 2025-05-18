@@ -7,14 +7,14 @@ import type { Database as SQLiteDatabase } from 'better-sqlite3'
 let db!: SQLiteDatabase
 
 export default defineNitroPlugin((nitroApp) => {
-  const { sqlitePath = './db/skins.sqlite' } = useRuntimeConfig()
+  const { sqliteSkinPath = './db/skins.sqlite' } = useRuntimeConfig()
 
   // Гарантируем существование директории, где будет лежать БД
-  mkdirSync(dirname(sqlitePath), { recursive: true })
+  mkdirSync(dirname(sqliteSkinPath), { recursive: true })
 
   // В предыдущей версии передавался неверный option { nativeBinding: true }.
   // Если custom-binding не нужен — оставляем конструктор без опций.
-  db = new SQLite(sqlitePath)
+  db = new SQLite(sqliteSkinPath)
 
   // Базовые PRAGMA-настройки
   db.pragma('journal_mode = WAL')
@@ -36,7 +36,7 @@ export default defineNitroPlugin((nitroApp) => {
   nitroApp.sqlite = db
 })
 
-export function useSQLite(): SQLiteDatabase {
+export function useSkinSQLite(): SQLiteDatabase {
   if (!db) {
     throw new Error('SQLite not initialised')
   }

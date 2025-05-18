@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     }
     const accessToken = authHeader.slice(7)
-    if (!checkAuth(uuid, accessToken)) {
+    if (!(await checkAuth(uuid, accessToken))) {
         throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
     }
 

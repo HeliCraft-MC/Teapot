@@ -51,8 +51,8 @@ export async function loginUser(nickname: string, password: string) {
  */
 export async function refreshUser(uuid: string, refreshToken: string) {
     const db = useDatabase()
-    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ?')
-    const user = await req.get(uuid) as AuthUser
+    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ? OR UUID_WR = ?')
+    const user = await req.get(uuid, uuid) as AuthUser
 
     if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({
@@ -79,8 +79,8 @@ export async function refreshUser(uuid: string, refreshToken: string) {
 
 export async function checkAuth(uuid: string, accessToken: string) {
     const db = useDatabase()
-    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ?')
-    const user = await req.get(uuid) as AuthUser
+    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ? OR UUID_WR = ?')
+    const user = await req.get(uuid, uuid) as AuthUser
 
     if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({

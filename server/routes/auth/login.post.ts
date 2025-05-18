@@ -13,21 +13,11 @@ export default defineEventHandler(async (event) => {
         })
         return {
             uuid,
-            nickname: userNickname
+            nickname: userNickname,
+            accessToken: tokens.accessToken
         }
     } catch (e) {
-        if (e instanceof H3Error) {
-            throw e
-        } else {
-            throw createError({
-                statusCode: 500,
-                statusMessage: 'Server error',
-                data: {
-                    statusMessageRu: 'Ошибка сервера',
-                    error: e
-                }
-            })
-        }
+        throw e
     }
 
 

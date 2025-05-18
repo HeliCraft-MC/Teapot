@@ -11,16 +11,17 @@ export default defineNitroConfig({
         default: {
             connector: 'mysql2',
             options: {
-                host:     process.env.MYSQL_HOST || 'localhost',
+                host:     process.env.MYSQL_HOST || '5.83.140.42',
                 port:     Number(process.env.MYSQL_PORT) || 3306,
-                user:     process.env.MYSQL_USER || 'root',
-                password: process.env.MYSQL_PASSWORD || 'password',
-                database: process.env.MYSQL_DATABASE || 'auth',
+                user:     process.env.MYSQL_USER || 'ms0urVpn',
+                password: process.env.MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
+                database: process.env.MYSQL_DATABASE || 'newAuth',
             }
         }
     },
     runtimeConfig: {
+        jwtSecret: process.env.JWT_SECRET || 'secret',
         uploads: process.env.UPLOAD_DIR || 'uploads',
-        sqlitePath: process.env.SQLITE_PATH || 'db.sqlite',
+        sqliteSkinPath: process.env.SQLITE_PATH || 'db.sqlite',
     }
 });

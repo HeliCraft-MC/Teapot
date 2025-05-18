@@ -15,7 +15,5 @@ export default defineEventHandler(async (event) => {
     const { uploadDir = './uploads' } = useRuntimeConfig()
     const skinBuf = await fsp.readFile(join(uploadDir, meta.path))
     const headBuf = await extractHead(skinBuf)
-
-    event.res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     return send(event, headBuf, 'image/png')
 })

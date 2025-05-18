@@ -12,7 +12,17 @@ export function generateAccessToken(user: any) {
     if (!user || !user.UUID) {
         throw new Error('Invalid user object (Must contain UUID at least)');
     }
-    return jsonwebtoken.sign(user, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const { jwtSecret } = useRuntimeConfig()
+    return jsonwebtoken.sign({
+        UUID: user.UUID,
+        UUID_WR: user.UUID_WR,
+        NICKNAME: user.NICKNAME,
+        LOWERCASENICKNAME: user.LOWERCASENICKNAME,
+        REGDATE: user.REGDATE,
+        ISSUEDTIME: user.ISSUEDTIME,
+        serverID: user.serverID,
+        hwidId: user.hwidId
+    }, jwtSecret, { expiresIn: '1h' });
 }
 
 /**
@@ -27,7 +37,17 @@ export function generateRefreshToken(user: any) {
     if (!user || !user.UUID) {
         throw new Error('Invalid user object (Must contain UUID at least)');
     }
-    return jsonwebtoken.sign(user, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const { jwtSecret } = useRuntimeConfig()
+    return jsonwebtoken.sign({
+        UUID: user.UUID,
+        UUID_WR: user.UUID_WR,
+        NICKNAME: user.NICKNAME,
+        LOWERCASENICKNAME: user.LOWERCASENICKNAME,
+        REGDATE: user.REGDATE,
+        ISSUEDTIME: user.ISSUEDTIME,
+        serverID: user.serverID,
+        hwidId: user.hwidId
+    }, jwtSecret, { expiresIn: '7d' });
 }
 
 /**
@@ -38,7 +58,8 @@ export function generateRefreshToken(user: any) {
  * or throws an error if the token is invalid or expired.
  */
 export function verifyToken(token: string) {
-    return jsonwebtoken.verify(token, process.env.JWT_SECRET);
+    const { jwtSecret } = useRuntimeConfig()
+    return jsonwebtoken.verify(token, jwtSecret);
 }
 
 /**
@@ -48,9 +69,11 @@ export function verifyToken(token: string) {
  * @param {any} user - The user object containing credentials to match the token.
  * @return {boolean} Returns true if the token is valid and matches the user's UUID, otherwise false.
  */
-export function verifyTokenWithCredentials(token: string, user: any) {
+export async function verifyTokenWithCredentials(token: string, user: any) {
     try {
-        const decoded: AuthUser = jsonwebtoken.verify(token, process.env.JWT_SECRET);
+        const { jwtSecret } = useRuntimeConfig()
+        const decoded = await jsonwebtoken.verify(token, jwtSecret);
+        // @ts-ignore
         return decoded && decoded.UUID === user.UUID;
     } catch (error) {
         return false;

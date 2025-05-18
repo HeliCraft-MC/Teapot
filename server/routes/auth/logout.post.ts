@@ -10,15 +10,6 @@ export default defineEventHandler(async (event) => {
             }
         }
     } catch (e) {
-        if (e instanceof H3Error){
-            throw e
-        } else throw createError({
-            statusCode: 500,
-            statusMessage: 'Logout failed',
-            data: {
-                statusMessageRu: 'Ошибка выхода из системы',
-                error: e
-            }
-        })
+        throw e
     }
 })

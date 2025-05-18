@@ -1,7 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import { join } from 'pathe'
 import { useRuntimeConfig } from '#imports'
-import { useSQLite } from '~/plugins/sqlite'
+import { useSkinSQLite } from '~/plugins/sqlite'
 
 /**
  * DELETE /user/[id]/skin
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     await fsp.rm(join(uploadDir, meta.path))
 
     // Чистим запись
-    useSQLite().prepare('DELETE FROM skins WHERE uuid = ?').run(uuid)
+    useSkinSQLite().prepare('DELETE FROM skins WHERE uuid = ?').run(uuid)
 
     // Триггер обновления клиента (без ожидания)
     sendUpdateRequest(event, id).catch(() => {})
