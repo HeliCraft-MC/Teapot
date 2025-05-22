@@ -1,0 +1,49 @@
+// server/middleware/auth.ts
+
+/* ---------- правила исключений ---------- */
+interface ExcludeRule {
+    pattern: RegExp
+    methods?: string[]        // UPPER-case
+}
+const exclude: ExcludeRule[] = [
+    { pattern: /^\/auth\/login(?:\?.*)?$/ },
+    { pattern: /^\/auth\/refresh$/ },
+    { pattern: /^\/auth\/logout$/ },
+    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?$/, methods: ['GET'] }
+]
+
+export default defineEventHandler(async (event) => {
+    const url    = event.path || event.node.req.url || '/'
+    const method = (event.method || event.node.req.method || 'GET').toUpperCase()
+
+    /* 1. исключаем public-роуты */
+    for (const rule of exclude) {
+        if (rule.pattern.test(url) &&
+            (!rule.methods || rule.methods.includes(method))) {
+            return
+        }
+    }
+
+    /* 2. Bearer */
+    const authHeader = getHeader(event, 'authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+        throw createError({ statusCode: 401, statusMessage: 'Missing Bearer' })
+    }
+    const accessToken = authHeader.slice(7)
+
+    /* 3. проверяем JWT + БД */
+    let payload: any
+    try {
+        payload = await verifyToken(accessToken)
+    } catch {
+        throw createError({ statusCode: 401, statusMessage: 'Invalid token' })
+    }
+    const { UUID } = payload ?? {}
+    if (!UUID) {
+        throw createError({ statusCode: 401, statusMessage: 'Invalid payload' })
+    }
+    await checkAuth(UUID, accessToken)
+
+    /* 4. кладём данные в контекст */
+    event.context.auth = { uuid: UUID }
+})

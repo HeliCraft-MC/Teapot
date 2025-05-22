@@ -1,4 +1,3 @@
-import {H3Error} from "h3";
 
 export default defineEventHandler(async (event) => {
     const { nickname, password } = await readBody(event)

@@ -1,8 +1,10 @@
 export default defineEventHandler(async (event) => {
-    const { uuid, refreshToken } = await readBody(event)
+    const { uuid } = await readBody(event)
+    const refreshToken = getCookie(event, 'refreshToken')
 
     try {
         const { tokens, uuid: newUuid, nickname: userNickname } = await refreshUser(uuid, refreshToken)
+
         setCookie(event, 'refreshToken', tokens.refreshToken, {
             httpOnly: true,
             secure:   true,
