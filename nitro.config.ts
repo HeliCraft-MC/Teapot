@@ -17,7 +17,16 @@ export default defineNitroConfig({
                 password: process.env.MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
                 database: process.env.MYSQL_DATABASE || 'newAuth',
             }
-        }
+        },
+        states: {
+            connector: 'mysql2',
+            options: {
+                host:     process.env.STATES_MYSQL_HOST || '5.83.140.42',
+                port:     Number(process.env.STATES_MYSQL_PORT) || 3306,
+                user:     process.env.STATES_MYSQL_USER || 'ms0urVpn',
+                password: process.env.STATES_MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
+                database: process.env.STATES_MYSQL_DATABASE || 'states',
+            }
     },
     runtimeConfig: {
         jwtSecret: process.env.JWT_SECRET || 'secret',

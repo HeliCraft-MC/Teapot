@@ -1,7 +1,7 @@
 import { join, dirname } from 'pathe'
 import { promises as fsp } from 'node:fs'
 import { useRuntimeConfig } from '#imports'
-import { useSkinSQLite } from '~/plugins/sqlite'
+import { useSkinSQLite } from '~/plugins/skinSqlite'
 import sharp from 'sharp'
 import { v4 as uuidv4 } from 'uuid'
 import type { SkinMeta } from '~/interfaces/skins.types'

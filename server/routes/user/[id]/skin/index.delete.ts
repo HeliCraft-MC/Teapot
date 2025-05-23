@@ -1,7 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import { join } from 'pathe'
 import { useRuntimeConfig } from '#imports'
-import { useSkinSQLite } from '~/plugins/sqlite'
+import { useSkinSQLite } from '~/plugins/skinSqlite'
 
 /**
  * DELETE /user/[id]/skin
