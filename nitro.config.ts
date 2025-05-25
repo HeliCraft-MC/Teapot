@@ -27,6 +27,7 @@ export default defineNitroConfig({
                 password: process.env.STATES_MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
                 database: process.env.STATES_MYSQL_DATABASE || 'states',
             }
+        }
     },
     runtimeConfig: {
         jwtSecret: process.env.JWT_SECRET || 'secret',
