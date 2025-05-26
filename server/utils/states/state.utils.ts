@@ -1,8 +1,10 @@
-import {GovernmentForm, StateStatus, IStateMember, IState} from '~/interfaces/state/state.types'
+import {GovernmentForm, StateStatus, IStateMember, IState, RolesInState} from '~/interfaces/state/state.types'
+import { IHistoryEvent, HistoryEventType } from "~/interfaces/state/history.types";
 import { v4 as uuidv4 } from 'uuid'
 import { promises as fsp } from 'node:fs'
 import { join, dirname } from 'pathe'
 import sharp from 'sharp'
+import {isUserAdmin} from "~/utils/user.utils";
 
 const MAX_NAME_LEN = 32
 const MIN_NAME_LEN = 3
@@ -124,13 +126,10 @@ export async function declareNewState(
     /* ---- Checks ---- */
     let flagLink: string | null = null
     if (typeof flag === 'string') {
-        // If flag is a string, it should be a link to an image
-        if ((!flag.startsWith('/') || !flag.startsWith('http')) && !flag.endsWith('.png')) {
-            throw createError({
-                statusCode: 422,
-                statusMessage: 'Invalid flag link',
-                data: { statusMessageRu: 'Неверная ссылка на флаг' }
-            })
+        const isLocal = flag.startsWith('/')
+        const isRemote = flag.startsWith('http://') || flag.startsWith('https://')
+        if ((!isLocal && !isRemote) || !flag.endsWith('.png')) {
+            throw createError({ statusCode: 422, statusMessage: 'Invalid flag link', data: { statusMessageRu: 'Неверная ссылка на флаг' } })
         }
         flagLink = flag
     } else if (Buffer.isBuffer(flag)) {
@@ -150,45 +149,62 @@ export async function declareNewState(
         // TODO check if the rulerUuid is not already a member of another state
     }
 
-    if (typeof telegramLink === 'string' &&
-        (!telegramLink.startsWith('https://t.me/') ||
-            !telegramLink.startsWith('https://telegram.me/') ||
-            !telegramLink.startsWith('@') ||
-            !telegramLink.startsWith('http://t.me/')
-            || !telegramLink.startsWith('t.me/')))
-    {
-        throw createError({
-            statusCode: 422,
-            statusMessage: 'Invalid telegram link',
-        })
+    if (typeof telegramLink === 'string') {
+        const ok = telegramLink.startsWith('https://t.me/')
+            || telegramLink.startsWith('https://telegram.me/')
+            || telegramLink.startsWith('http://t.me/')
+            || telegramLink.startsWith('t.me/')
+            || telegramLink.startsWith('@')
+        if (!ok) {
+            throw createError({ statusCode: 422, statusMessage: 'Invalid telegram link', data: { statusMessageRu: 'Неверная ссылка на Telegram' } })
+        }
     }
 
     /* ---- Insert the new state into the database ---- */
     const sql = db().prepare(`
         INSERT INTO states (
-            uuid, name, description, color, gov_form, has_elections,
-            telegram_link, ruler_uuid, allow_dual_citizenship,
-            free_entry, free_entry_description, flag, created, updated
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            uuid, name, description, color_hex, gov_form, has_elections,
+            telegram_link, creator_uuid, ruler_uuid, allow_dual_citizenship,
+            free_entry, free_entry_description, status, flag_link, created, updated
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
     const uuid = uuidv4()
 
     const req = await sql.run(
         uuid, name, description, color, govForm, hasElections,
-        telegramLink, rulerUuid, allowDualCitizenship,
-        freeEntry, freeEntryDescription, flagLink, Date.now(), Date.now())
+        telegramLink, creatorUuid, rulerUuid, allowDualCitizenship,
+        freeEntry, freeEntryDescription, StateStatus.PENDING , flagLink, Date.now(), Date.now())
 
     if (req.success == true) {
         // Create the initial ruler member
         const memberSql = db().prepare(`
-            INSERT INTO state_members (stateUuid, cityUuid, playerUuid, role, uuid, created, updated)
+            INSERT INTO state_members (uuid, created, updated, state_uuid, city_uuid, player_uuid, role)
             VALUES (?, ?, ?, ?, ?, ?, ?)`)
 
         const memberReq = await memberSql.run(
-            uuid, null, rulerUuid, 'RULER', uuidv4(), Date.now(), Date.now()
+            uuidv4(), Date.now(), Date.now(), uuid, null, rulerUuid, RolesInState.RULER
         )
 
         if (memberReq.success == true) {
+            // Create the initial history event
+            const historyEvent: IHistoryEvent = {
+                uuid: uuidv4(),
+                created: Date.now(),
+                updated: Date.now(),
+                type: HistoryEventType.STATE_CREATED,
+                title: "Создано новое государство",
+                description: `Государство "${name}" было создано.`,
+                state_uuids: [uuid],
+                player_uuids: [creatorUuid],
+                alliance_uuids: null,
+                war_uuid: null,
+                city_uuids: null,
+                details_json: null,
+                created_by_uuid: creatorUuid,
+            }
+
+            // TODO call method from history.utils.ts to insert the event
+
             return uuid
         } else {
             throw createError({
@@ -204,5 +220,185 @@ export async function declareNewState(
             data: { statusMessageRu: 'Не удалось создать новое государство' }
         })
     }
+}
+
+export async function getStateByUuid(uuid: string): Promise<IState | null> {
+    const sql = db().prepare('SELECT * FROM states WHERE uuid = ?')
+    const state = await sql.get(uuid) as IState | undefined
+
+    if (!state) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'State not found',
+            data: { statusMessageRu: 'Государство не найдено' }
+        })
+    }
+
+    return state
+}
+
+export type StateFilter = Partial<{
+    name: string
+    description: string
+    colorHex: string
+    govForm: IState['gov_form']
+    hasElections: boolean
+    status: IState['status']
+    capitalUuid: string
+    mapLink: string | null
+    telegramLink: string | null
+    creatorUuid: string
+    rulerUuid: string
+    allowDualCitizenship: boolean
+    freeEntry: boolean
+    freeEntryDescription: string | null
+    flagLink: string
+}>
+
+/**
+ * Поиск государств с фильтрами и пагинацией.
+ * @param filters — объект фильтров (ключи из IState → значения).
+ * @param startAt — смещение (OFFSET), опционально.
+ * @param limit — максимальное число записей (LIMIT), опционально.
+ */
+export async function searchStatesByFilters(
+    filters: StateFilter,
+    startAt?: number,
+    limit?: number
+): Promise<IState[]> {
+    const db = useDatabase('states')
+
+    const columnMap: Record<keyof StateFilter, string> = {
+        name:                     'name',
+        description:              'description',
+        colorHex:                 'color_hex',
+        govForm:                  'gov_form',
+        hasElections:             'has_elections',
+        status:                   'status',
+        capitalUuid:              'capital_uuid',
+        mapLink:                  'map_link',
+        telegramLink:             'telegram_link',
+        creatorUuid:              'creator_uuid',
+        rulerUuid:                'ruler_uuid',
+        allowDualCitizenship:     'allow_dual_citizenship',
+        freeEntry:                'free_entry',
+        freeEntryDescription:     'free_entry_description',
+        flagLink:                 'flag_link',
+    }
+
+    const clauses: string[] = []
+    const values: any[] = []
+
+    for (const [key, rawValue] of Object.entries(filters) as [keyof StateFilter, any][]) {
+        if (rawValue == null || !(key in columnMap)) continue
+
+        const col = columnMap[key]
+        if (typeof rawValue === 'string') {
+            clauses.push(`${col} LIKE ?`)
+            values.push(`%${rawValue}%`)
+        } else {
+            clauses.push(`${col} = ?`)
+            values.push(rawValue)
+        }
+    }
+
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+
+    // Пагинация
+    let paginationSQL = ''
+    if (typeof limit === 'number') {
+        paginationSQL += ` LIMIT ?`
+        values.push(limit)
+        if (typeof startAt === 'number') {
+            paginationSQL += ` OFFSET ?`
+            values.push(startAt)
+        }
+    } else if (typeof startAt === 'number') {
+        // если передан только startAt, нужно задать какой-то limit — например, больший
+        paginationSQL += ` LIMIT 10 OFFSET ?`
+        values.push(startAt)
+    }
+
+    const sql = db.prepare(`SELECT * FROM states ${where}${paginationSQL}`)
+    const rows = await (values.length
+            ? sql.all(...values)
+            : sql.all()
+    ) as IState[]
+
+    return rows
+}
+
+
+
+
+export async function getStateMembers(stateUuid: string): Promise<IStateMember[]> {
+    const sql = db().prepare('SELECT * FROM state_members WHERE state_uuid = ?')
+    const members = await sql.all(stateUuid) as IStateMember[]
+
+    if (!members || members.length === 0) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'No members found for this state',
+            data: { statusMessageRu: 'У этого государства нет участников' }
+        })
+    }
+
+    return members
+}
+
+export async function approveState(stateUuid: string, adminUuid: string): Promise<void> {
+    if (!await isUserAdmin(adminUuid)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        })
+    }
+    try {
+        await getStateByUuid(stateUuid)
+    } catch (e) {
+        throw e;
+    }
+
+    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    const req = await sql.run(StateStatus.ACTIVE, Date.now(), stateUuid)
+
+    if (!req.success) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to approve state',
+            data: { statusMessageRu: 'Не удалось одобрить государство' }
+        })
+    }
+    return;
+
+}
+
+
+export async function rejectState(stateUuid: string, adminUuid: string): Promise<void> {
+    if (!await isUserAdmin(adminUuid)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        })
+    }
+    try {
+        await getStateByUuid(stateUuid)
+    } catch (e) {
+        throw e;
+    }
+
+    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    const req = await sql.run(StateStatus.REJECTED, Date.now(), stateUuid)
+
+    if (!req.success) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to reject state',
+            data: { statusMessageRu: 'Не удалось отклонить государство' }
+        })
+    }
+    return;
 }
 

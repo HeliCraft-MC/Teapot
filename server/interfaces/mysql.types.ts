@@ -3,6 +3,7 @@ export interface AuthUser {
     LOWERCASENICKNAME: string
     HASH: string
     IP: string | null
+    isAdmin: number | null
     TOTPTOKEN: string | null
     REGDATE: number | null
     UUID: string

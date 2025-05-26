@@ -15,8 +15,8 @@ export interface ICity extends IBaseEntity {
     coordinates: string;
 
     /** Государство, к которому относится (null → независимый город) */
-    stateUuid: string | null;
+    state_uuid: string | null;
 
     /** Является ли столицей своего государства */
-    isCapital: boolean;
+    is_capital: boolean;
 }

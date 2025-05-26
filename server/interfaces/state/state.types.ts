@@ -54,43 +54,43 @@ export interface IState extends IBaseEntity {
     description: string;
 
     /** Фирменный цвет (#RRGGBB) */
-    colorHex: string;
+    color_hex: string;
 
     /** Форма правления */
-    govForm: GovernmentForm;
+    gov_form: GovernmentForm;
 
     /** Есть ли в государстве выборы */
-    hasElections: boolean;
+    has_elections: boolean;
 
     /** Текущий статус существования */
     status: StateStatus;
 
     /** UUID столицы (может отсутствовать до назначения) */
-    capitalUuid: string | null;
+    capital_uuid: string | null;
 
     /** Ссылка на внешнюю карту (BlueMap и т. д.) */
-    mapLink: string | null;
+    map_link: string | null;
 
     /** Приглашение в Telegram-чат */
-    telegramLink: string | null;
+    telegram_link: string | null;
 
     /** Основатель (UUID игрока) */
-    creatorUuid: string;
+    creator_uuid: string;
 
     /** Действующий правитель (UUID игрока) */
-    rulerUuid: string;
+    ruler_uuid: string;
 
     /** Разрешено ли двойное гражданство */
-    allowDualCitizenship: boolean;
+    allow_dual_citizenship: boolean;
 
     /** Возможен ли свободный вход на территорию */
-    freeEntry: boolean;
+    free_entry: boolean;
 
     /** Детали политики свободного входа */
-    freeEntryDescription: string | null;
+    free_entry_description: string | null;
 
     /** URL к файлу флага */
-    flagLink: string;
+    flag_link: string;
 }
 
 
@@ -99,28 +99,28 @@ export interface IState extends IBaseEntity {
  */
 export interface IStateWarrant extends IBaseEntity {
     /** UUID государства, выдавшего */
-    stateUuid: string;
+    state_uuid: string;
 
     /** UUID игрока, на которого выдан ордер */
-    affectedPlayerUuid: string;
+    affected_player_uuid: string;
 
     /** Причина ареста */
     reason: string;
 
     /** UUID игрока, которым выдан ордер */
-    issuedByPlayerUuid: string;
+    issued_by_player_uuid: string;
 
     /** Выполнены ли какие-либо действия администрацией */
-    actionsTakenByAdmins: boolean;
+    actions_taken_by_admins: boolean;
 
     /** Какие именно */
-    actionsByAdminsDetails: string | null;
+    actions_by_admins_details: string | null;
 
     /** Выполнены ли какие-либо действия государством */
-    actionsTakenByState: boolean;
+    actions_taken_by_state: boolean;
 
     /** Какие именно */
-    actionsByStateDetails: string | null;
+    actions_by_state_details: string | null;
 }
 
 /**
@@ -128,7 +128,7 @@ export interface IStateWarrant extends IBaseEntity {
  */
 export interface IStateOrder extends IBaseEntity {
     /** UUID государства, выпустившего указ */
-    stateUuid: string;
+    state_uuid: string;
 
     /** Заголовок указа */
     title: string;
@@ -137,19 +137,19 @@ export interface IStateOrder extends IBaseEntity {
     text: string;
 
     /** Дата и время публикации */
-    publishedAt: number;
+    published_at: number;
 
     /** UUID игрока, выпустившего указ */
-    issuedByPlayerUuid: string;
+    issued_by_player_uuid: string;
 
     /** Важность указа \ максимально 5 закрепленных */
     importance: 'pinned' | 'high' | 'medium' | 'low';
 
     /** Действует ли указ в данный момент */
-    isActive: boolean;
+    is_active: boolean;
 
     /** Дата и время окончания действия (может быть null) */
-    expiresAt: number | null;
+    expires_at: number | null;
 }
 
 /**
@@ -157,13 +157,13 @@ export interface IStateOrder extends IBaseEntity {
  */
 export interface IStateMember extends IBaseEntity {
     /** Государство */
-    stateUuid: string;
+    state_uuid: string;
 
     /** Город прописки (может быть null) */
-    cityUuid: string | null;
+    city_uuid: string | null;
 
     /** UUID игрока */
-    playerUuid: string;
+    player_uuid: string;
 
     /** Роль, определяющая права */
     role: RolesInState;

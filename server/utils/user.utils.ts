@@ -208,3 +208,20 @@ export async function deleteUser(uuid: string) {
     })
   }
 }
+
+
+export async function isUserAdmin(uuid: string): Promise<boolean> {
+  const db = useDatabase()
+  const stmt = db.prepare('SELECT isAdmin FROM AUTH WHERE UUID_WR = ? OR UUID = ?')
+  const user = await stmt.get(uuid, uuid) as { isAdmin: number } | undefined
+
+  if (!user) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'User not found',
+      data: { statusMessageRu: 'Пользователь не найден' }
+    })
+  }
+
+  return user.isAdmin === 1
+}

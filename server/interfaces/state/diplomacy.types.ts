@@ -32,13 +32,13 @@ export interface IAlliance extends IBaseEntity {
     purpose: string;
 
     /** Фирменный цвет (#RRGGBB) */
-    colorHex: string;
+    color_hex: string;
 
     /** Государство-основатель */
-    creatorStateUuid: string;
+    creator_state_uuid: string;
 
     /** URL флага */
-    flagLink: string;
+    flag_link: string;
 
     /** Текущий статус */
     status: AllianceStatus;
@@ -49,9 +49,9 @@ export interface IAlliance extends IBaseEntity {
  * `isPending = true` означает, что заявка ещё не одобрена.
  */
 export interface IAllianceMember extends IBaseEntity {
-    allianceUuid: string;
-    stateUuid: string;
-    isPending: boolean;
+    alliance_uuid: string;
+    state_uuid: string;
+    is_pending: boolean;
 }
 
 /* ────────────────────────────────────────────────────────────── */
@@ -69,8 +69,8 @@ export enum RelationKind {
  * Для каждой неупорядоченной пары государств ровно одна запись.
  */
 export interface IStateRelation extends IBaseEntity {
-    stateAUuid: string;
-    stateBUuid: string;
+    state_a_uuid: string;
+    state_b_uuid: string;
     kind: RelationKind;
 }
 
@@ -119,7 +119,7 @@ export interface IWar extends IBaseEntity {
 
     reason: string;
 
-    victoryCondition: string;
+    victory_condition: string;
 
     /** Текущий статус */
     status: WarStatus;
@@ -127,20 +127,20 @@ export interface IWar extends IBaseEntity {
     /** Итог («3-2», «ничья»…) ― null, пока война не закончилась */
     result: string | null;
 
-    resultAction: string | null;
+    result_action: string | null;
 }
 
 export interface IWarBattle extends IBaseEntity {
-    warUuid: string;
+    war_uuid: string;
     name: string;
     description: string;
     type: BattleType;
     status: BattleStatus;
     result: string | null;
     /** Дата начала сражения (Unix-время) */
-    startDate: number;
+    start_date: number;
     /** Дата окончания сражения (Unix-время) */
-    endDate: number | null; // null, если ещё не завершено
+    end_date: number | null; // null, если ещё не завершено
 }
 
 /** Роль конкретного государства в войне */
@@ -155,7 +155,7 @@ export enum WarSideRole {
  * Связка «государство ↔ война».
  */
 export interface IWarParticipant extends IBaseEntity {
-    warUuid: string;
-    stateUuid: string;
-    sideRole: WarSideRole;
+    war_uuid: string;
+    state_uuid: string;
+    side_role: WarSideRole;
 }

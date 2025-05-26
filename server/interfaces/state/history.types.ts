@@ -59,23 +59,23 @@ export interface IHistoryEvent extends IBaseEntity {
     description: string;
 
     /** Задействованные государства (JSON-массив UUID’ов) */
-    stateUuids: string[] | null;
+    state_uuids: string[] | null;
 
     /** Задействованные игроки */
-    playerUuids: string[] | null;
+    player_uuids: string[] | null;
 
     /** Задействованные альянсы */
-    allianceUuids: string[] | null;
+    alliance_uuids: string[] | null;
 
     /** Связанная война (если применимо) */
-    warUuid: string | null;
+    war_uuid: string | null;
 
     /** Связанный города (если применимо) */
-    cityUuids: string[] | null;
+    city_uuids: string[] | null;
 
     /** Дополнительные данные (произвольный JSON) */
-    detailsJson: string | null;
+    details_json: string | null;
 
     /** Автор записи (UUID игрока или админа) */
-    createdByUuid: string;
+    created_by_uuid: string;
 }
