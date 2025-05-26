@@ -3,7 +3,6 @@ import { IHistoryEvent, HistoryEventType } from "~/interfaces/state/history.type
 import { v4 as uuidv4 } from 'uuid'
 import { promises as fsp } from 'node:fs'
 import { join, dirname } from 'pathe'
-import sharp from 'sharp'
 import {isUserAdmin} from "~/utils/user.utils";
 
 const MAX_NAME_LEN = 32
@@ -370,6 +369,26 @@ export async function approveState(stateUuid: string, adminUuid: string): Promis
             data: { statusMessageRu: 'Не удалось одобрить государство' }
         })
     }
+
+    //create history event
+    const historyEvent: IHistoryEvent = {
+        uuid: uuidv4(),
+        created: Date.now(),
+        updated: Date.now(),
+        type: HistoryEventType.STATE_STATUS_CHANGED,
+        title: "Одобрено новое государство",
+        description: `Государство было создано.`,
+        state_uuids: [stateUuid],
+        player_uuids: null,
+        alliance_uuids: null,
+        war_uuid: null,
+        city_uuids: null,
+        details_json: null,
+        created_by_uuid: adminUuid,
+    }
+
+    // TODO call method from history.utils.ts to insert the event
+
     return;
 
 }
@@ -399,6 +418,71 @@ export async function rejectState(stateUuid: string, adminUuid: string): Promise
             data: { statusMessageRu: 'Не удалось отклонить государство' }
         })
     }
+
+    //create history event
+    const historyEvent: IHistoryEvent = {
+        uuid: uuidv4(),
+        created: Date.now(),
+        updated: Date.now(),
+        type: HistoryEventType.STATE_STATUS_CHANGED,
+        title: "Отклонено новое государство",
+        description: `Создание государства отменено.`,
+        state_uuids: [stateUuid],
+        player_uuids: null,
+        alliance_uuids: null,
+        war_uuid: null,
+        city_uuids: null,
+        details_json: null,
+        created_by_uuid: adminUuid,
+    }
+
+    // TODO call method from history.utils.ts to insert the event
+
     return;
+}
+
+export async function deleteState(stateUuid: string, adminUuid: string): Promise<void> {
+    if (!await isUserAdmin(adminUuid)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        })
+    }
+    try {
+        await getStateByUuid(stateUuid)
+    } catch (e) {
+        throw e;
+    }
+
+    {
+        const sql = db().prepare('DELETE FROM states WHERE uuid = ?')
+        const req = await sql.run(stateUuid)
+
+        if (!req.success) {
+            throw createError({
+                statusCode: 500,
+                statusMessage: 'Failed to delete state',
+                data: {statusMessageRu: 'Не удалось удалить государство'}
+            })
+        }
+    }
+
+    // TODO check sql req if valid
+    // remove all events from history where stateUuid is only one in state_uuids
+    {
+        const sql = db().prepare('DELETE FROM history WHERE state_uuids = ?')
+        const req = await sql.run(stateUuid)
+
+        if (!req.success) {
+            throw createError({
+                statusCode: 500,
+                statusMessage: 'Failed to delete state',
+                data: {statusMessageRu: 'Не удалось удалить государство'}
+            })
+        }
+    }
+
+    return
 }
 
