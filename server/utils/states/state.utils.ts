@@ -468,10 +468,13 @@ export async function deleteState(stateUuid: string, adminUuid: string): Promise
         }
     }
 
-    // TODO check sql req if valid
     // remove all events from history where stateUuid is only one in state_uuids
     {
-        const sql = db().prepare('DELETE FROM history WHERE state_uuids = ?')
+        const sql = db().prepare(`
+      DELETE FROM history_events
+      WHERE JSON_LENGTH(state_uuids) = 1
+        AND JSON_UNQUOTE(JSON_EXTRACT(state_uuids, '$[0]')) = ?
+    `)
         const req = await sql.run(stateUuid)
 
         if (!req.success) {
@@ -485,4 +488,5 @@ export async function deleteState(stateUuid: string, adminUuid: string): Promise
 
     return
 }
+
 
