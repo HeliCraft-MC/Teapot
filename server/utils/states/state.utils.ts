@@ -88,6 +88,36 @@ async function flagToUploads(flag: Buffer): Promise<string> {
     return rel
 }
 
+export async function getStateByName(name: string): Promise<IState | null> {
+    const sql = db().prepare('SELECT * FROM states WHERE LOWER(name) = ?')
+    const state = await sql.get(name.toLowerCase()) as IState | undefined
+
+    if (!state) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'State not found',
+            data: { statusMessageRu: 'Государство не найдено' }
+        })
+    }
+
+    return state
+}
+
+export async function getStateByUuid(uuid: string): Promise<IState | null> {
+    const sql = db().prepare('SELECT * FROM states WHERE uuid = ?')
+    const state = await sql.get(uuid) as IState | undefined
+
+    if (!state) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'State not found',
+            data: { statusMessageRu: 'Государство не найдено' }
+        })
+    }
+
+    return state
+}
+
 /**
  * Declares a new state with the given parameters.
  * @param name - The name of the state.
@@ -219,21 +249,6 @@ export async function declareNewState(
             data: { statusMessageRu: 'Не удалось создать новое государство' }
         })
     }
-}
-
-export async function getStateByUuid(uuid: string): Promise<IState | null> {
-    const sql = db().prepare('SELECT * FROM states WHERE uuid = ?')
-    const state = await sql.get(uuid) as IState | undefined
-
-    if (!state) {
-        throw createError({
-            statusCode: 404,
-            statusMessage: 'State not found',
-            data: { statusMessageRu: 'Государство не найдено' }
-        })
-    }
-
-    return state
 }
 
 export type StateFilter = Partial<{
