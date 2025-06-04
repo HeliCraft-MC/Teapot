@@ -4,6 +4,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { promises as fsp } from 'node:fs'
 import { join, dirname } from 'pathe'
 import {isUserAdmin} from "~/utils/user.utils";
+import {addHistoryEvent} from "~/utils/states/history.utils";
+import {
+    getPlayerStates,
+    isPlayerInAnyState,
+    isPlayerInState,
+    isPlayerRulerSomewhere
+} from "~/utils/states/citezenship.utils";
 
 const MAX_NAME_LEN = 32
 const MIN_NAME_LEN = 3
@@ -172,10 +179,22 @@ export async function declareNewState(
         })
     }
 
-    // TODO check if the rulerUuid is not already a ruler of another state
+    if (isPlayerRulerSomewhere(rulerUuid)){
+        throw createError({
+            statusCode: 422,
+            statusMessage: 'Player is already a ruler in another state',
+            data: { statusMessageRu: 'Игрок уже является правителем в другом государстве' }
+        })
+    }
 
     if (!allowDualCitizenship) {
-        // TODO check if the rulerUuid is not already a member of another state
+        if (await isPlayerInAnyState(rulerUuid)) {
+            throw createError({
+                statusCode: 422,
+                statusMessage: 'Player already has citizenship in another state',
+                data: { statusMessageRu: 'Игрок уже имеет гражданство в другом государстве' }
+            })
+        }
     }
 
     if (typeof telegramLink === 'string') {
@@ -230,9 +249,13 @@ export async function declareNewState(
                 city_uuids: null,
                 details_json: null,
                 created_by_uuid: creatorUuid,
+                season: null,
+                is_deleted: false,
+                deleted_at: null,
+                deleted_by_uuid: null
             }
 
-            // TODO call method from history.utils.ts to insert the event
+            await addHistoryEvent(historyEvent)
 
             return uuid
         } else {
@@ -400,9 +423,13 @@ export async function approveState(stateUuid: string, adminUuid: string): Promis
         city_uuids: null,
         details_json: null,
         created_by_uuid: adminUuid,
+        season: null,
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by_uuid: null
     }
 
-    // TODO call method from history.utils.ts to insert the event
+    addHistoryEvent(historyEvent)
 
     return;
 
@@ -449,9 +476,13 @@ export async function rejectState(stateUuid: string, adminUuid: string): Promise
         city_uuids: null,
         details_json: null,
         created_by_uuid: adminUuid,
+        season: null,
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by_uuid: null
     }
 
-    // TODO call method from history.utils.ts to insert the event
+    addHistoryEvent(historyEvent)
 
     return;
 }

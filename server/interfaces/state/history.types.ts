@@ -49,6 +49,9 @@ export enum HistoryEventType {
 /* ────────────────────────────────────────────────────────────── */
 
 export interface IHistoryEvent extends IBaseEntity {
+
+    season: string | null;
+
     /** Категория события (enum) */
     type: HistoryEventType;
 
@@ -78,4 +81,8 @@ export interface IHistoryEvent extends IBaseEntity {
 
     /** Автор записи (UUID игрока или админа) */
     created_by_uuid: string;
+
+    is_deleted: boolean;
+    deleted_at: number | null;
+    deleted_by_uuid: string | null;
 }

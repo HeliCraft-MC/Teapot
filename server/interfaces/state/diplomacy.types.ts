@@ -58,11 +58,43 @@ export interface IAllianceMember extends IBaseEntity {
 /*  Двусторонние отношения                                       */
 /* ────────────────────────────────────────────────────────────── */
 
+export enum RelationRequestStatus {
+    PENDING  = 'pending',   // ожидание рассмотрения второй стороной
+    APPROVED = 'approved',  // одобрено, изменения применены
+    DECLINED = 'declined',  // отклонено, заявка закрыта
+}
+
 /** Характер отношений между двумя государствами */
 export enum RelationKind {
     NEUTRAL = 'neutral', // нейтралитет
     ALLY    = 'ally',    // союзники
     ENEMY   = 'enemy'    // состояние войны / вражды
+}
+
+/**
+ * Заявка на изменение (или удаление) двусторонних отношений между двумя государствами.
+ */
+export interface IStateRelationRequest extends IBaseEntity {
+    /** UUID первого (в упорядоченном виде) государства (state_a_uuid < state_b_uuid) */
+    state_a_uuid: string
+
+    /** UUID второго (в упорядоченном виде) государства */
+    state_b_uuid: string
+
+    /** UUID государства, попросившего изменение (proposer_state_uuid) */
+    proposer_state_uuid: string
+
+    /**
+     * Требуемый новый характер отношений:
+     *  – RelationKind.ALLY  → союзники
+     *  – RelationKind.ENEMY → враги
+     *  – RelationKind.NEUTRAL
+     *  - null → удалить отношения
+     */
+    requested_kind: RelationKind | null
+
+    /** Статус заявки (pending | approved | declined) */
+    status: RelationRequestStatus
 }
 
 /**

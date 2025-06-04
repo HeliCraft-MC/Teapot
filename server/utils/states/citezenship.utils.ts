@@ -2,26 +2,72 @@ import { v4 as uuidv4 } from 'uuid'
 import {getStateByUuid} from "~/utils/states/state.utils";
 import {RolesInState} from "~/interfaces/state/state.types";
 
-export async function addMember(stateUuid: string, uuidToAdd: string, uuidWhoAdded: string): Promise<void>{
+export async function applyForMembership(stateUuid: string, applicantUuid: string): Promise<void> {
+    if (!await getStateByUuid(stateUuid)) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'State not found',
+            data: {statusMessageRu: 'Государство не найдено'}
+        });
+    }
+    const db = useDatabase('states');
+    const isAlreadyMember = await db.prepare('SELECT COUNT(*) as count FROM state_members WHERE state_uuid = ? AND player_uuid = ?')
+        .get(stateUuid, applicantUuid) as { count: number };
+    if (isAlreadyMember.count > 0) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: 'Already a member',
+            data: { statusMessageRu: 'Уже является участником или заявка отправлена' }
+        });
+    }
+    if(await isDualCitizenshipAllowed(applicantUuid) == false) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: 'Dual citizenship not allowed',
+            data: { statusMessageRu: 'Двойное гражданство не разрешено' }
+        });
+    }
+    const req = db.prepare('INSERT INTO state_members (uuid, created, updated, state_uuid, city_uuid, player_uuid, role) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        req.run(
+            uuidv4(),
+            Date.now(),
+            Date.now(),
+            stateUuid,
+        null,
+        applicantUuid,
+        RolesInState.APPLICANT
+    );
+}
+
+export async function reviewMembershipApplication(
+    stateUuid: string,
+    applicantUuid: string,
+    reviewerUuid: string,
+    approve: boolean
+): Promise<void> {
     if (!getStateByUuid(stateUuid)) {
         throw createError({
             statusCode: 404,
             statusMessage: 'State not found',
             data: { statusMessageRu: 'Государство не найдено' }
-        })
+        });
     }
-    // TODO check if uuidWhoAdded has rights to add members
-    const db = useDatabase('states')
-    const req = db.prepare('INSERT INTO state_members (uuid, created, updated, state_uuid, city_uuid, player_uuid, role) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    req.run(
-        uuidv4(),
-        Date.now(),
-        Date.now(),
-        stateUuid,
-        null, // city_uuid can be null for state members
-        uuidToAdd,
-        'member' // default role for new members
-    )
+    const hasPermission = await isRoleHigherOrEqual(stateUuid, reviewerUuid, RolesInState.OFFICER, [RolesInState.DIPLOMAT]);
+    if (!hasPermission) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Insufficient permissions',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        });
+    }
+    const db = useDatabase('states');
+    if (approve) {
+        const req = db.prepare('UPDATE state_members SET role = ?, updated = ? WHERE state_uuid = ? AND player_uuid = ?');
+        req.run(RolesInState.CITIZEN, Date.now(), stateUuid, applicantUuid);
+    } else {
+        const req = db.prepare('DELETE FROM state_members WHERE state_uuid = ? AND player_uuid = ?');
+        req.run(stateUuid, applicantUuid);
+    }
 }
 
 export async function removeMember(stateUuid: string, uuidToRemove: string, uuidWhoRemoved: string): Promise<void> {
@@ -32,7 +78,14 @@ export async function removeMember(stateUuid: string, uuidToRemove: string, uuid
             data: { statusMessageRu: 'Государство не найдено' }
         })
     }
-    // TODO check if uuidWhoRemoved has rights to remove members
+    const hasPermission = await isRoleHigherOrEqual(stateUuid, uuidWhoRemoved, RolesInState.OFFICER, [RolesInState.DIPLOMAT]);
+    if (!hasPermission) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Insufficient permissions',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        });
+    }
     const db = useDatabase('states')
     const req = db.prepare('DELETE FROM state_members WHERE state_uuid = ? AND player_uuid = ?')
     req.run(stateUuid, uuidToRemove)
@@ -85,6 +138,20 @@ export async function getMember(stateUuid: string, playerUuid: string): Promise<
         })
     }
     return member
+}
+
+export async function isPlayerRulerSomewhere(playerUuid: string): Promise<boolean> {
+    const db = useDatabase('states')
+    const req = db.prepare('SELECT COUNT(*) as count FROM state_members WHERE player_uuid = ? AND role = ?')
+    const result = await req.get(playerUuid, RolesInState.RULER) as { count: number }
+    return result.count > 0
+}
+
+export async function isPlayerInAnyState(playerUuid: string): Promise<boolean> {
+    const db = useDatabase('states')
+    const req = db.prepare('SELECT COUNT(*) as count FROM state_members WHERE player_uuid = ?')
+    const result = await req.get(playerUuid) as { count: number }
+    return result.count > 0
 }
 
 export async function getPlayerStates(playerUuid: string): Promise<any[]> {
@@ -142,7 +209,172 @@ export async function getStateMemberRole(stateUuid: string, playerUuid: string):
     return result ? result.role : null;
 }
 
-export async function updateMemberRole(stateUuid: string, playerUuid: string, updaterUuid: string, newRole: RolesInState): Promise<void> {
+export async function isRoleHigherOrEqual(
+    stateUuid: string,
+    playerUuid: string,
+    roleToCheck: RolesInState,
+    excludedRoles: RolesInState[] = []
+): Promise<boolean> {
+   const memberRole = await getStateMemberRole(stateUuid, playerUuid);
+    if (!memberRole) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'Member not found',
+            data: { statusMessageRu: 'Участник не найден' }
+        })
+    }
+    if (excludedRoles.includes(memberRole)) {
+        return false;
+    }
+    const rolesOrder = [
+        RolesInState.APPLICANT,
+        RolesInState.CITIZEN,
+        RolesInState.OFFICER,
+        RolesInState.DIPLOMAT,
+        RolesInState.MINISTER,
+        RolesInState.VICE_RULER,
+        RolesInState.RULER
+    ];
+    return rolesOrder.indexOf(memberRole) >= rolesOrder.indexOf(roleToCheck);
+}
+
+export async function updateMemberRole(
+    stateUuid: string,
+    playerUuid: string,
+    updaterUuid: string,
+    newRole: RolesInState
+): Promise<void> {
+    // 1. Проверяем существование государства
+    if (!await getStateByUuid(stateUuid)) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: "State not found",
+            data: { statusMessageRu: "Государство не найдено" }
+        });
+    }
+
+    // 2. Запрещаем менять собственную роль напрямую
+    if (playerUuid === updaterUuid) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: "Cannot change own role",
+            data: { statusMessageRu: "Нельзя самостоятельно менять себе роль" }
+        });
+    }
+
+    // 3. Проверяем, что у игрока-цели уже есть членство в этом государстве
+    const isTargetInState = await isPlayerInState(stateUuid, playerUuid);
+    if (!isTargetInState) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: "Member not found",
+            data: { statusMessageRu: "Игрок не является участником государства" }
+        });
+    }
+
+    // 4. Проверяем, что инициатор состоит в этом же государстве
+    const isUpdaterInState = await isPlayerInState(stateUuid, updaterUuid);
+    if (!isUpdaterInState) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: "Insufficient permissions",
+            data: { statusMessageRu: "Не состоит в данном государстве" }
+        });
+    }
+
+    // 5. Проверяем корректность новой роли: она должна быть одним из перечисленных значений RolesInState
+    //    (т.к. newRole уже типизирована RolesInState, обычно этой проверки достаточно).
+    const allRoles: RolesInState[] = Object.values(RolesInState);
+    if (!allRoles.includes(newRole)) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: "Invalid role",
+            data: { statusMessageRu: "Недопустимая роль" }
+        });
+    }
+
+    // 6. Получаем текущие роли инициатора и цели
+    const updaterRole = await getStateMemberRole(stateUuid, updaterUuid);
+    const targetRole = await getStateMemberRole(stateUuid, playerUuid);
+
+    if (!updaterRole) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: "Updater not found",
+            data: { statusMessageRu: "Инициатор не найден среди членов государства" }
+        });
+    }
+    if (!targetRole) {
+        // на всякий случай, хотя уже проверяли isPlayerInState
+        throw createError({
+            statusCode: 404,
+            statusMessage: "Member not found",
+            data: { statusMessageRu: "Игрок не найден среди участников государства" }
+        });
+    }
+
+    // 7. Определяем порядок ролей для сравнения рангов
+    const rolesOrder: RolesInState[] = [
+        RolesInState.APPLICANT,
+        RolesInState.CITIZEN,
+        RolesInState.OFFICER,
+        RolesInState.DIPLOMAT,
+        RolesInState.MINISTER,
+        RolesInState.VICE_RULER,
+        RolesInState.RULER
+    ];
+
+    const updaterRank = rolesOrder.indexOf(updaterRole);
+    const targetRank = rolesOrder.indexOf(targetRole);
+    const newRoleRank = rolesOrder.indexOf(newRole);
+
+    // 8. Проверяем, что инициатор имеет более высокий ранг, чем у цели
+    if (updaterRank <= targetRank) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: "Insufficient permissions",
+            data: { statusMessageRu: "Недостаточно прав для смены данной роли участника" }
+        });
+    }
+
+    // 9. Проверяем, что инициатор не пытается присвоить роль равную или выше своей собственной
+    if (updaterRank <= newRoleRank && newRole !== RolesInState.RULER) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: "Insufficient permissions",
+            data: { statusMessageRu: "Недостаточно прав для присвоения такой роли" }
+        });
+    }
+
+    if (newRole === RolesInState.RULER) {
+        if (updaterRole !== RolesInState.RULER) {
+            throw createError({
+                statusCode: 403,
+                statusMessage: "Only current ruler can assign new ruler",
+                data: { statusMessageRu: "Только текущий глава может назначить нового главу" }
+            });
+        }
+        // Понижаем текущего правителя (updatorUuid) до вице-главы
+        const downgradeStmt = useDatabase("states").prepare(`
+        UPDATE state_members
+        SET role = ?, updated = ?
+        WHERE state_uuid = ? AND player_uuid = ?
+        `);
+        await downgradeStmt.run(RolesInState.VICE_RULER, Date.now(), stateUuid, updaterUuid);
+    }
+
+    // 11. Всё ок, обновляем роль в БД
+    const db = useDatabase("states");
+    const stmt = db.prepare(`
+    UPDATE state_members 
+    SET role = ?, updated = ? 
+    WHERE state_uuid = ? AND player_uuid = ?
+  `);
+
+    await stmt.run(newRole, Date.now(), stateUuid, playerUuid);
+}
+
+export async function leaveState(stateUuid: string, playerUuid: string): Promise<void> {
     if (!getStateByUuid(stateUuid)) {
         throw createError({
             statusCode: 404,
@@ -150,14 +382,22 @@ export async function updateMemberRole(stateUuid: string, playerUuid: string, up
             data: { statusMessageRu: 'Государство не найдено' }
         })
     }
-    if (!(newRole == RolesInState.RULER || newRole == RolesInState.MINISTER || newRole == RolesInState.VICE_RULER)) {
+    if (await getStateMemberRole(stateUuid, playerUuid) === RolesInState.RULER) {
         throw createError({
             statusCode: 400,
-            statusMessage: 'Invalid role',
-            data: { statusMessageRu: 'Недопустимая роль' }
+            statusMessage: 'Cannot leave as ruler',
+            data: { statusMessageRu: 'Нельзя покинуть государство, будучи главой' }
+        })
+    }
+    if (!await isPlayerInState(stateUuid, playerUuid)) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'Player not found in state',
+            data: { statusMessageRu: 'Игрок не найден в государстве' }
         })
     }
     const db = useDatabase('states')
-    const req = db.prepare('UPDATE state_members SET role = ?, updated = ? WHERE state_uuid = ? AND player_uuid = ?')
-    req.run(newRole, Date.now(), stateUuid, playerUuid)
+    const req = db.prepare('DELETE FROM state_members WHERE state_uuid = ? AND player_uuid = ?')
+    await req.run(stateUuid, playerUuid)
 }
+
