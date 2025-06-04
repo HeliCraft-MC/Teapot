@@ -1,5 +1,6 @@
-import {ICity} from "~/interfaces/state/city.types";
+import { ICity } from "~/interfaces/state/city.types";
 import { v4 as uuidv4 } from 'uuid'
+import { getStateByUuid } from "~/utils/states/state.utils"
 
 export async function createCity(name: string, coordinates: string, stateUuid: string, isCapital: boolean): Promise<void>;
 export async function createCity(name: string, coordinates: string): Promise<void>;
@@ -117,16 +118,18 @@ export async function deleteCity(uuid: string): Promise<void> {
 }
 
 export async function attachCityToState(cityUuid: string, stateUuid: string): Promise<void> {
-    const db = useDatabase('states');
-    const update = db.prepare('UPDATE cities SET state_uuid = ? WHERE uuid = ?');
-    const res = await update.run(stateUuid, cityUuid);
+    await getStateByUuid(stateUuid)
+
+    const db = useDatabase('states')
+    const update = db.prepare('UPDATE cities SET state_uuid = ? WHERE uuid = ?')
+    const res = await update.run(stateUuid, cityUuid)
 
     if (!res.success) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to attach city to state',
-            data: { statusMessageRu: 'Не удалось прикрепить город к гсоударству' }
-        });
+            data: { statusMessageRu: 'Не удалось прикрепить город к государству' }
+        })
     }
 }
 
@@ -156,7 +159,7 @@ export async function detachCityFromState(cityUuid: string): Promise<void> {
 export async function isCityCapital(cityUuid: string): Promise<boolean> {
     const db = useDatabase('states');
     const query = db.prepare('SELECT is_capital FROM cities WHERE uuid = ?');
-    const result = await query.get(cityUuid);
+    const result = await query.get(cityUuid) as { is_capital: number } | undefined;
 
     if (!result) {
         throw createError({
@@ -166,15 +169,24 @@ export async function isCityCapital(cityUuid: string): Promise<boolean> {
         });
     }
 
-    // @ts-ignore
-    return Boolean(result.is_capital);
+    return !!result.is_capital;
 }
 
 export async function setCityAsCapital(cityUuid: string): Promise<void> {
-    const db = useDatabase('states');
+    const db = useDatabase('states')
+    const city = await getCityByUuid(cityUuid)
+
+    if (!city || city.state_uuid === null) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: 'City has no state',
+            data: { statusMessageRu: 'Город не принадлежит государству' }
+        })
+    }
+
     // Удаляем статус столицы у всех городов в этом государстве
-    const reset = db.prepare('UPDATE cities SET is_capital = 0 WHERE state_uuid = (SELECT state_uuid FROM cities WHERE uuid = ?)');
-    const resetRes = await reset.run(cityUuid);
+    const reset = db.prepare('UPDATE cities SET is_capital = 0 WHERE state_uuid = (SELECT state_uuid FROM cities WHERE uuid = ?)')
+    const resetRes = await reset.run(cityUuid)
     if (!resetRes.success) {
         throw createError({
             statusCode: 500,
@@ -206,10 +218,15 @@ export async function attachPlayerToCity(playerUuid: string, cityUuid: string): 
         });
     }
 
-    if (city.state_uuid != null) {
+    if (city.state_uuid === null) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: 'City has no state',
+            data: { statusMessageRu: 'Город не принадлежит государству' }
+        });
+    } else {
         const query = db.prepare('SELECT state_uuid FROM state_members WHERE player_uuid = ?');
-        const playerState = await query.get(playerUuid);
-        // @ts-ignore
+        const playerState = await query.get(playerUuid) as { state_uuid: string } | undefined;
         if (!playerState || playerState.state_uuid !== city.state_uuid) {
             throw createError({
                 statusCode: 400,
