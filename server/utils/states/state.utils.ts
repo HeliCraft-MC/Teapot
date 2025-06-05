@@ -10,7 +10,7 @@ import {
     isPlayerInAnyState,
     isPlayerInState,
     isPlayerRulerSomewhere
-} from "~/utils/states/citezenship.utils";
+} from "~/utils/states/citizenship.utils";
 
 const MAX_NAME_LEN = 32
 const MIN_NAME_LEN = 3
