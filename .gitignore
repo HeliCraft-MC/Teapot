@@ -5,3 +5,8 @@ dist
 .cache
 .output
 .env
+.idea
+db.sqlite
+skins.sqlite
+states.txt
+uploads
