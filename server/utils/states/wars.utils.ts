@@ -12,6 +12,10 @@ import { IHistoryEvent, HistoryEventType } from '~/interfaces/state/history.type
 import { getStateByUuid } from '~/utils/states/state.utils'
 import { addHistoryEvent } from '~/utils/states/history.utils'
 import { isRoleHigherOrEqual } from '~/utils/states/citezenship.utils'
+import {
+    listAlliancesForState,
+    listAllianceMembers,
+} from '~/utils/states/diplomacy.utils'
 import { isUserAdmin } from '~/utils/user.utils'
 
 const db = () => useDatabase('states')
@@ -68,8 +72,36 @@ export async function declareWar(
             war_uuid, state_uuid, side_role
         ) VALUES (?, ?, ?, ?, ?, ?)
     `)
+    const participantSet = new Set<string>()
     await partStmt.run(uuidv4(), now, now, warUuid, attackerStateUuid, WarSideRole.ATTACKER)
+    participantSet.add(attackerStateUuid)
     await partStmt.run(uuidv4(), now, now, warUuid, defenderStateUuid, WarSideRole.DEFENDER)
+    participantSet.add(defenderStateUuid)
+
+    const attackerAlliances = await listAlliancesForState(attackerStateUuid)
+    const defenderAlliances = await listAlliancesForState(defenderStateUuid)
+
+    const allianceUuids: string[] = []
+
+    for (const alliance of attackerAlliances) {
+        allianceUuids.push(alliance.uuid)
+        const members = await listAllianceMembers(alliance.uuid)
+        for (const member of members) {
+            if (participantSet.has(member.state_uuid)) continue
+            participantSet.add(member.state_uuid)
+            await partStmt.run(uuidv4(), now, now, warUuid, member.state_uuid, WarSideRole.ALLY_ATTACKER)
+        }
+    }
+
+    for (const alliance of defenderAlliances) {
+        allianceUuids.push(alliance.uuid)
+        const members = await listAllianceMembers(alliance.uuid)
+        for (const member of members) {
+            if (participantSet.has(member.state_uuid)) continue
+            participantSet.add(member.state_uuid)
+            await partStmt.run(uuidv4(), now, now, warUuid, member.state_uuid, WarSideRole.ALLY_DEFENDER)
+        }
+    }
 
     const hist: IHistoryEvent = {
         uuid: uuidv4(),
@@ -78,8 +110,8 @@ export async function declareWar(
         type: HistoryEventType.WAR_DECLARED,
         title: 'Объявлена война',
         description: reason,
-        state_uuids: [attackerStateUuid, defenderStateUuid],
-        alliance_uuids: null,
+        state_uuids: Array.from(participantSet),
+        alliance_uuids: allianceUuids.length ? allianceUuids : null,
         player_uuids: [attackerPlayerUuid],
         war_uuid: warUuid,
         city_uuids: null,
