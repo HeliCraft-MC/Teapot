@@ -11,7 +11,7 @@ import { RolesInState } from '~/interfaces/state/state.types'
 import { IHistoryEvent, HistoryEventType } from '~/interfaces/state/history.types'
 import { getStateByUuid } from '~/utils/states/state.utils'
 import { addHistoryEvent } from '~/utils/states/history.utils'
-import { isRoleHigherOrEqual } from '~/utils/states/citezenship.utils'
+import { isRoleHigherOrEqual } from '~/utils/states/citizenship.utils'
 import {
     listAlliancesForState,
     listAllianceMembers,
