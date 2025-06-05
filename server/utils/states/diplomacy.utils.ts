@@ -417,6 +417,21 @@ export async function listAllianceMembers(
         .all(allianceUuid)) as IAllianceMember[]
 }
 
+export async function listAlliancesForState(
+    stateUuid: string,
+): Promise<IAlliance[]> {
+    return (await db()
+        .prepare(`
+            SELECT a.*
+            FROM alliance_members am
+            JOIN alliances a ON a.uuid = am.alliance_uuid
+            WHERE am.state_uuid = ?
+              AND am.is_pending = 0
+              AND a.status = ?
+        `)
+        .all(stateUuid, AllianceStatus.ACTIVE)) as IAlliance[]
+}
+
 /* ───────────────── 2. ДВУСТОРОННИЕ ОТНОШЕНИЯ ────────────────── */
 
 /**
