@@ -1,3 +1,22 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['wars'],
+    description: 'Create a battle for a war',
+    parameters: [
+      { in: 'path', name: 'uuid', required: true }
+    ],
+    requestBody: {
+      description: 'Battle details',
+      required: true
+    },
+    responses: {
+      200: { description: 'Battle created' },
+      403: { description: 'Not authorized' },
+      404: { description: 'War not found' }
+    }
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const warUuid = getRouterParam(event, 'uuid')
     const { creatorStateUuid, creatorPlayerUuid, name, description, type, startDate } = await readBody(event)

@@ -1,3 +1,22 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['relations'],
+    description: 'Review a relation change request',
+    parameters: [
+      { in: 'path', name: 'uuid', required: true }
+    ],
+    requestBody: {
+      description: 'Reviewer info and decision',
+      required: true
+    },
+    responses: {
+      200: { description: 'Request reviewed' },
+      403: { description: 'Not authorized' },
+      404: { description: 'Request not found' }
+    }
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const requestUuid = getRouterParam(event, 'uuid')
     const { reviewerStateUuid, reviewerPlayerUuid, approve } = await readBody(event)
