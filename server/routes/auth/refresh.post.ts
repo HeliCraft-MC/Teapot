@@ -1,3 +1,16 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['auth'],
+    description: 'Refresh authentication tokens',
+    requestBody: { description: 'User UUID', required: true },
+    responses: {
+      200: { description: 'Tokens refreshed' },
+      401: { description: 'Invalid refresh token' },
+      404: { description: 'User not found' }
+    }
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const { uuid } = await readBody(event)
     const refreshToken = getCookie(event, 'refreshToken')

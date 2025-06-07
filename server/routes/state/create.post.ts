@@ -3,6 +3,13 @@ import {H3Error, MultiPartData} from "h3";
 import {fileTypeFromBuffer} from "file-type";
 import sharp from "sharp";
 
+defineRouteMeta({
+  openAPI: {
+    tags: ['state'],
+    description: 'Create a state'
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const { uuid } = event.context.auth || {}
 
@@ -34,7 +41,7 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 415, statusMessage: 'PNG only' })
     }
     try{
-        const state = declareNewState(
+        const stateUuid = await declareNewState(
             name,
             description,
             color,
@@ -48,6 +55,7 @@ export default defineEventHandler(async (event) => {
             freeEntryDesc,
             await sharp(_part.data).toBuffer()
         )
+        return { uuid: stateUuid }
     } catch (e) {
         if (e instanceof H3Error || e instanceof Error) {
             throw e;

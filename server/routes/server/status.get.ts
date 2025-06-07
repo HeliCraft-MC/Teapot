@@ -1,3 +1,14 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['server'],
+    description: 'Get current game server status',
+    responses: {
+      200: { description: 'Status info' },
+      500: { description: 'Server error' }
+    }
+  }
+})
+
 interface ServerResponse {
     status: boolean;
     count: number;

@@ -1,5 +1,20 @@
 import { promises as fsp } from 'node:fs'
 import { join } from 'pathe'
+
+defineRouteMeta({
+  openAPI: {
+    tags: ['user'],
+    description: 'Get player skin PNG',
+    parameters: [
+      { in: 'path', name: 'id', required: true }
+    ],
+    responses: {
+      200: { description: 'Skin file' },
+      400: { description: 'Invalid id' },
+      404: { description: 'Skin not found' }
+    }
+  }
+})
 /**
  * GET /user/[id]/skin
  * Отдаёт PNG-файл скина (идентично /skin.png).

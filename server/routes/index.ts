@@ -1,3 +1,13 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['general'],
+    description: 'Default landing route',
+    responses: {
+      200: { description: 'Greeting message' }
+    }
+  }
+})
+
 export default defineEventHandler((event) => {
   return "Start by editing <code>server/routes/index.ts</code>.";
 });

@@ -9,7 +9,7 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/auth\/login(?:\?.*)?$/ },
     { pattern: /^\/auth\/refresh$/ },
     { pattern: /^\/auth\/logout$/ },
-    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?$/, methods: ['GET'] }
+    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?(?:\.png)?$/, methods: ['GET'] }
 ]
 
 export default defineEventHandler(async (event) => {

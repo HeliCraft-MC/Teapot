@@ -1,3 +1,18 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['auth'],
+    description: 'Login a user',
+    requestBody: {
+      description: 'Nickname and password',
+      required: true
+    },
+    responses: {
+      200: { description: 'Login successful' },
+      401: { description: 'Invalid password' },
+      404: { description: 'User not found' }
+    }
+  }
+})
 
 export default defineEventHandler(async (event) => {
     const { nickname, password } = await readBody(event)

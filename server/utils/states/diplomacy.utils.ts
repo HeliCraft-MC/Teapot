@@ -432,6 +432,15 @@ export async function listAlliancesForState(
         .all(stateUuid, AllianceStatus.ACTIVE)) as IAlliance[]
 }
 
+export async function listAlliances(
+    startAt = 0,
+    limit = 100
+): Promise<IAlliance[]> {
+    return (await db()
+        .prepare('SELECT * FROM alliances WHERE status = ? ORDER BY created DESC LIMIT ? OFFSET ?')
+        .all(AllianceStatus.ACTIVE, limit, startAt)) as IAlliance[]
+}
+
 /* ───────────────── 2. ДВУСТОРОННИЕ ОТНОШЕНИЯ ────────────────── */
 
 /**

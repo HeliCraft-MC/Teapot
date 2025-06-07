@@ -1,5 +1,20 @@
 import {H3Error} from "h3";
 
+defineRouteMeta({
+  openAPI: {
+    tags: ['user'],
+    description: 'Get public user info',
+    parameters: [
+      { in: 'path', name: 'id', required: true }
+    ],
+    responses: {
+      200: { description: 'User data' },
+      400: { description: 'Invalid id' },
+      404: { description: 'User not found' }
+    }
+  }
+})
+
 /**
  * GET /user/[id]
  * Возвращает публичные поля пользователя: uuid, nickname, regDate, loginDate.
