@@ -1,3 +1,10 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['history'],
+    description: 'List history events'
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const query = getQuery(event)
     const startAt = query.startAt ? Number(query.startAt) : 0

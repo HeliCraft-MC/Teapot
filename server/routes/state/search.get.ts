@@ -1,3 +1,10 @@
+defineRouteMeta({
+  openAPI: {
+    tags: ['state'],
+    description: 'Search states'
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const query = getQuery(event)
     const filters: any = {}

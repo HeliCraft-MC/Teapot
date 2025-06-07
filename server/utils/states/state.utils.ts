@@ -365,6 +365,10 @@ export async function searchStatesByFilters(
     return rows
 }
 
+export async function listStates(startAt = 0, limit = 100): Promise<IState[]> {
+    return searchStatesByFilters({}, startAt, limit)
+}
+
 
 
 

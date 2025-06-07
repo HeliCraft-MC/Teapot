@@ -261,3 +261,13 @@ export async function detachPlayerFromCity(playerUuid: string): Promise<void> {
     }
 }
 
+export async function listCities(startAt = 0, limit = 100): Promise<ICity[]> {
+    const db = useDatabase('states');
+    const stmt = db.prepare('SELECT * FROM cities ORDER BY created DESC LIMIT ? OFFSET ?');
+    const rows = await stmt.all(limit, startAt) as ICity[];
+    return rows.map(city => ({
+        ...city,
+        is_capital: Boolean(city.is_capital)
+    }));
+}
+

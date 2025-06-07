@@ -3,6 +3,13 @@ import {H3Error, MultiPartData} from "h3";
 import {fileTypeFromBuffer} from "file-type";
 import sharp from "sharp";
 
+defineRouteMeta({
+  openAPI: {
+    tags: ['state'],
+    description: 'Create a state'
+  }
+})
+
 export default defineEventHandler(async (event) => {
     const { uuid } = event.context.auth || {}
 
