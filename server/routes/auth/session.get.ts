@@ -1,4 +1,15 @@
 // server/auth/session.get.ts
+defineRouteMeta({
+  openAPI: {
+    tags: ['auth'],
+    description: 'Return session information',
+    responses: {
+      200: { description: 'Authenticated session' },
+      401: { description: 'Unauthenticated' },
+      404: { description: 'User not found' }
+    }
+  }
+})
 export default defineEventHandler(async (event) => {
     /* JWT уже проверен middleware ⇒ event.context.auth.uuid есть */
     const { uuid } = event.context.auth || {}

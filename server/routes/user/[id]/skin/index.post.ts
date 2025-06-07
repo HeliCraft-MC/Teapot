@@ -1,6 +1,25 @@
 import { fileTypeFromBuffer } from 'file-type'
 import sharp from 'sharp'
 
+defineRouteMeta({
+  openAPI: {
+    tags: ['user'],
+    description: 'Upload a new player skin',
+    parameters: [
+      { in: 'path', name: 'id', required: true }
+    ],
+    requestBody: { description: 'PNG skin file', required: true },
+    responses: {
+      200: { description: 'Skin uploaded' },
+      400: { description: 'Invalid request or id' },
+      401: { description: 'Unauthorized' },
+      404: { description: 'User not found' },
+      413: { description: 'File too big' },
+      415: { description: 'PNG only' }
+    }
+  }
+})
+
 /**
  * POST /user/[id]/skin
  * Загружает новый PNG-скин, сохраняет его в SQLite и файловой системе,
