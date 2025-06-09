@@ -6,7 +6,17 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'Battles list' },
+      200: {
+        description: 'Battles list',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/IWarBattle' }
+            }
+          }
+        }
+      },
       404: { description: 'War not found' }
     }
   }

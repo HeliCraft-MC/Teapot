@@ -6,7 +6,26 @@ import sharp from "sharp";
 defineRouteMeta({
   openAPI: {
     tags: ['state'],
-    description: 'Create a state'
+    description: 'Create a state',
+    responses: {
+      200: {
+        description: 'State created',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                uuid: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
+      401: { description: 'Unauthenticated' },
+      413: { description: 'File too big' },
+      415: { description: 'PNG only' },
+      500: { description: 'Unexpected server error' }
+    }
   }
 })
 

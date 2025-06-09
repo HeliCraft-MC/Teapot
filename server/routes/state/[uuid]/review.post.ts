@@ -9,11 +9,18 @@ defineRouteMeta({
       description: 'Applicant and reviewer info',
       required: true
     },
-    responses: {
-      200: { description: 'Application reviewed' },
-      403: { description: 'Insufficient permissions' },
-      404: { description: 'State not found' }
-    }
+      responses: {
+        200: {
+          description: 'Application reviewed',
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+            }
+          }
+        },
+        403: { description: 'Insufficient permissions' },
+        404: { description: 'State not found' }
+      }
   }
 })
 

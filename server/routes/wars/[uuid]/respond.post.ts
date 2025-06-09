@@ -10,7 +10,14 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Decision recorded' },
+      200: {
+        description: 'Decision recorded',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+          }
+        }
+      },
       400: { description: 'War already processed' },
       403: { description: 'Not authorized' },
       404: { description: 'Defender not found' }

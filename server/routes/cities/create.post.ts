@@ -7,7 +7,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'City created' },
+      200: {
+        description: 'City created',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       500: { description: 'Failed to create city' }
     }
   }

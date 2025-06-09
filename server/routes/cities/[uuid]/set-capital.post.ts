@@ -6,7 +6,17 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'Capital changed' },
+      200: {
+        description: 'Capital changed',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       400: { description: 'City has no state' },
       500: { description: 'Failed to update capital' }
     }

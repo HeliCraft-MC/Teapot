@@ -12,7 +12,14 @@ defineRouteMeta({
     ],
     requestBody: { description: 'Auth credentials', required: true },
     responses: {
-      200: { description: 'Skin deleted' },
+      200: {
+        description: 'Skin deleted',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+          }
+        }
+      },
       400: { description: 'Invalid id' },
       401: { description: 'Unauthorized' },
       404: { description: 'Skin not found' }

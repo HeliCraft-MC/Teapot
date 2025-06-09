@@ -5,7 +5,25 @@ defineRouteMeta({
     tags: ['auth'],
     description: 'Logout current user',
     responses: {
-      200: { description: 'Logout successful' }
+      200: {
+        description: 'Logout successful',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                statusMessage: { type: 'string' },
+                data: {
+                  type: 'object',
+                  properties: {
+                    statusMessageRu: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 })

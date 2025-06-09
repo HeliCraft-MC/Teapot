@@ -6,7 +6,14 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'State data' },
+      200: {
+        description: 'State data',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/IState' }
+          }
+        }
+      },
       404: { description: 'State not found' }
     }
   }

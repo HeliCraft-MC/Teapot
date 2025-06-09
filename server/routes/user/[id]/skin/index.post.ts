@@ -10,7 +10,24 @@ defineRouteMeta({
     ],
     requestBody: { description: 'PNG skin file', required: true },
     responses: {
-      200: { description: 'Skin uploaded' },
+      200: {
+        description: 'Skin uploaded',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                ok: { type: 'boolean' },
+                uuid: { type: 'string' },
+                path: { type: 'string' },
+                mime: { type: 'string' },
+                size: { type: 'number' },
+                created: { type: 'number' }
+              }
+            }
+          }
+        }
+      },
       400: { description: 'Invalid request or id' },
       401: { description: 'Unauthorized' },
       404: { description: 'User not found' },

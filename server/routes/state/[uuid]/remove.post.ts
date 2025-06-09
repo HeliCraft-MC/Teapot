@@ -9,11 +9,18 @@ defineRouteMeta({
       description: 'Member and initiator UUIDs',
       required: true
     },
-    responses: {
-      200: { description: 'Member removed' },
-      403: { description: 'Insufficient permissions' },
-      404: { description: 'State not found' }
-    }
+      responses: {
+        200: {
+          description: 'Member removed',
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+            }
+          }
+        },
+        403: { description: 'Insufficient permissions' },
+        404: { description: 'State not found' }
+      }
   }
 })
 

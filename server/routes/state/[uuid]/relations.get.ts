@@ -5,9 +5,16 @@ defineRouteMeta({
     parameters: [
       { in: 'path', name: 'uuid', required: true }
     ],
-    responses: {
-      200: { description: 'Relations list' }
-    }
+      responses: {
+        200: {
+          description: 'Relations list',
+          content: {
+          'application/json': {
+              schema: { type: 'array', items: { $ref: '#/components/schemas/IStateRelation' } }
+          }
+          }
+        }
+      }
   }
 })
 

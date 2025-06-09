@@ -6,7 +6,17 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'Array of members' }
+      200: {
+        description: 'Array of members',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/IAllianceMember' }
+            }
+          }
+        }
+      }
     }
   }
 })

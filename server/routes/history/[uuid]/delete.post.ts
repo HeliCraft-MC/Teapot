@@ -7,7 +7,17 @@ defineRouteMeta({
     ],
     requestBody: { description: 'Actor UUID', required: true },
     responses: {
-      200: { description: 'Event deleted' }
+      200: {
+        description: 'Event deleted',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      }
     }
   }
 })

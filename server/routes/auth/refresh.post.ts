@@ -4,7 +4,21 @@ defineRouteMeta({
     description: 'Refresh authentication tokens',
     requestBody: { description: 'User UUID', required: true },
     responses: {
-      200: { description: 'Tokens refreshed' },
+      200: {
+        description: 'Tokens refreshed',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                accessToken: { type: 'string' },
+                uuid: { type: 'string' },
+                nickname: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
       401: { description: 'Invalid refresh token' },
       404: { description: 'User not found' }
     }

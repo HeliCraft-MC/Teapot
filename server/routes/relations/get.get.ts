@@ -7,7 +7,14 @@ defineRouteMeta({
       { in: 'query', name: 'stateUuidB', required: true }
     ],
     responses: {
-      200: { description: 'Relation kind or null' }
+      200: {
+        description: 'Relation kind or null',
+        content: {
+          'application/json': {
+            schema: { type: ['string', 'null'] }
+          }
+        }
+      }
     }
   }
 })

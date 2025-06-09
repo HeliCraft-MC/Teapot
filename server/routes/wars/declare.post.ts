@@ -7,7 +7,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'War declared' },
+      200: {
+        description: 'War declared',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { uuid: { type: 'string' } }
+            }
+          }
+        }
+      },
       403: { description: 'Not authorized' },
       404: { description: 'State not found' },
       500: { description: 'Failed to declare war' }

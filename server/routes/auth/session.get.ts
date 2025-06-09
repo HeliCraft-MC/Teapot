@@ -4,7 +4,20 @@ defineRouteMeta({
     tags: ['auth'],
     description: 'Return session information',
     responses: {
-      200: { description: 'Authenticated session' },
+      200: {
+        description: 'Authenticated session',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                uuid: { type: 'string' },
+                nickname: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
       401: { description: 'Unauthenticated' },
       404: { description: 'User not found' }
     }

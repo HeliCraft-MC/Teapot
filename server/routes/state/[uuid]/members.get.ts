@@ -6,7 +6,14 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'Member list' },
+      200: {
+        description: 'Member list',
+        content: {
+          'application/json': {
+            schema: { type: 'array', items: { $ref: '#/components/schemas/IStateMember' } }
+          }
+        }
+      },
       404: { description: 'No members found' }
     }
   }

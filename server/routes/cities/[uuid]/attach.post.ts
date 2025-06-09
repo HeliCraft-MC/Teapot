@@ -10,7 +10,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'City attached' },
+      200: {
+        description: 'City attached',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       404: { description: 'State not found' },
       500: { description: 'Failed to attach city' }
     }

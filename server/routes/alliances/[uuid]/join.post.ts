@@ -10,7 +10,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Join request created' },
+      200: {
+        description: 'Join request created',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       400: { description: 'Already member or request pending' },
       403: { description: 'Not authorized' },
       404: { description: 'Alliance or state not found' }

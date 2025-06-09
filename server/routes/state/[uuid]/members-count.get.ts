@@ -6,7 +6,14 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'Members count' },
+      200: {
+        description: 'Members count',
+        content: {
+          'application/json': {
+            schema: { type: 'number' }
+          }
+        }
+      },
       404: { description: 'State not found' }
     }
   }

@@ -6,10 +6,17 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true },
       { in: 'path', name: 'playerUuid', required: true }
     ],
-    responses: {
-      200: { description: 'Member info' },
-      404: { description: 'State or member not found' }
-    }
+      responses: {
+        200: {
+          description: 'Member info',
+          content: {
+          'application/json': {
+              schema: { $ref: '#/components/schemas/IStateMember' }
+          }
+          }
+        },
+        404: { description: 'State or member not found' }
+      }
   }
 })
 

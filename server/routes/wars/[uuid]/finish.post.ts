@@ -10,7 +10,14 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'War finished' },
+      200: {
+        description: 'War finished',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+          }
+        }
+      },
       400: { description: 'War not active' },
       403: { description: 'Not authorized' },
       404: { description: 'War not found' }

@@ -3,7 +3,14 @@ defineRouteMeta({
     tags: ['history'],
     description: 'Count history events',
     responses: {
-      200: { description: 'Number of events' }
+      200: {
+        description: 'Number of events',
+        content: {
+          'application/json': {
+            schema: { type: 'number' }
+          }
+        }
+      }
     }
   }
 })

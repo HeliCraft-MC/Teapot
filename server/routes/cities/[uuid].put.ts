@@ -10,7 +10,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'City updated' },
+      200: {
+        description: 'City updated',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       400: { description: 'No fields provided' },
       500: { description: 'Failed to update city' }
     }

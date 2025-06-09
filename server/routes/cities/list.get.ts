@@ -1,7 +1,17 @@
 defineRouteMeta({
   openAPI: {
     tags: ['cities'],
-    description: 'List cities'
+    description: 'List cities',
+    responses: {
+      200: {
+        description: 'Array of cities',
+        content: {
+          'application/json': {
+            schema: { type: 'array', items: { $ref: '#/components/schemas/ICity' } }
+          }
+        }
+      }
+    }
   }
 })
 

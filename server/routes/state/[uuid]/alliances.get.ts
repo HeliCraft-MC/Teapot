@@ -5,9 +5,16 @@ defineRouteMeta({
     parameters: [
       { in: 'path', name: 'uuid', required: true }
     ],
-    responses: {
-      200: { description: 'List of alliances' }
-    }
+      responses: {
+        200: {
+          description: 'List of alliances',
+          content: {
+          'application/json': {
+              schema: { type: 'array', items: { $ref: '#/components/schemas/IAlliance' } }
+          }
+          }
+        }
+      }
   }
 })
 

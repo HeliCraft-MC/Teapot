@@ -7,7 +7,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Request created with UUID' },
+      200: {
+        description: 'Request created with UUID',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { uuid: { type: 'string' } }
+            }
+          }
+        }
+      },
       400: { description: 'Bad request or already requested' },
       403: { description: 'Not authorized' },
       404: { description: 'State not found' }

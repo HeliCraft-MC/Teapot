@@ -10,7 +10,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Application submitted' },
+      200: {
+        description: 'Application submitted',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       400: { description: 'Already a member or dual citizenship not allowed' },
       404: { description: 'State not found' }
     }

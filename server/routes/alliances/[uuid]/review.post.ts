@@ -10,7 +10,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Review processed' },
+      200: {
+        description: 'Review processed',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       403: { description: 'Not authorized' },
       404: { description: 'Application not found' }
     }

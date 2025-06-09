@@ -10,7 +10,14 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Battle created' },
+      200: {
+        description: 'Battle created',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { uuid: { type: 'string' } } }
+          }
+        }
+      },
       403: { description: 'Not authorized' },
       404: { description: 'War not found' }
     }

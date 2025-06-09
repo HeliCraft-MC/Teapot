@@ -7,7 +7,17 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Event created' }
+      200: {
+        description: 'Event created',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { uuid: { type: 'string' } }
+            }
+          }
+        }
+      }
     }
   }
 })

@@ -10,7 +10,14 @@ defineRouteMeta({
       required: true
     },
     responses: {
-      200: { description: 'Status updated' },
+      200: {
+        description: 'Status updated',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+          }
+        }
+      },
       403: { description: 'Not authorized' },
       404: { description: 'Battle not found' }
     }

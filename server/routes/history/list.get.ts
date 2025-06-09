@@ -1,7 +1,17 @@
 defineRouteMeta({
   openAPI: {
     tags: ['history'],
-    description: 'List history events'
+    description: 'List history events',
+    responses: {
+      200: {
+        description: 'Array of history events',
+        content: {
+          'application/json': {
+            schema: { type: 'array', items: { $ref: '#/components/schemas/IHistoryEvent' } }
+          }
+        }
+      }
+    }
   }
 })
 

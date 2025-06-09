@@ -1,7 +1,17 @@
 defineRouteMeta({
   openAPI: {
     tags: ['state'],
-    description: 'List states'
+    description: 'List states',
+    responses: {
+      200: {
+        description: 'Array of states',
+        content: {
+          'application/json': {
+            schema: { type: 'array', items: { $ref: '#/components/schemas/IState' } }
+          }
+        }
+      }
+    }
   }
 })
 
