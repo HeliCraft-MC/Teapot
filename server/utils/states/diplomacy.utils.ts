@@ -22,7 +22,7 @@ import {
 import { getStateByUuid } from '~/utils/states/state.utils'
 import { addHistoryEvent } from '~/utils/states/history.utils'
 import { v4 as uuidv4 } from 'uuid'
-import {RolesInState} from "~/interfaces/state/state.types";
+import {RolesInState} from "../../../../HeliCraftFrontNuxtVesper/types/state.types";
 
 /** Быстрый доступ к БД «states» */
 const db = () => useDatabase('states')

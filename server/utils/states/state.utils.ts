@@ -1,4 +1,4 @@
-import {GovernmentForm, StateStatus, IStateMember, IState, RolesInState} from '~/interfaces/state/state.types'
+import {GovernmentForm, StateStatus, IStateMember, IState, RolesInState} from '../../../../HeliCraftFrontNuxtVesper/types/state.types'
 import { IHistoryEvent, HistoryEventType } from "~/interfaces/state/history.types";
 import { v4 as uuidv4 } from 'uuid'
 import { promises as fsp } from 'node:fs'
@@ -107,6 +107,8 @@ export async function getStateByName(name: string): Promise<IState | null> {
         })
     }
 
+    state.flag_link = transformFlagLink(state.flag_link)
+
     return state
 }
 
@@ -121,6 +123,8 @@ export async function getStateByUuid(uuid: string): Promise<IState | null> {
             data: { statusMessageRu: 'Государство не найдено' }
         })
     }
+
+    state.flag_link = transformFlagLink(state.flag_link)
 
     return state
 }
@@ -179,7 +183,7 @@ export async function declareNewState(
         })
     }
 
-    if (isPlayerRulerSomewhere(rulerUuid)){
+    if (await isPlayerRulerSomewhere(rulerUuid)){
         throw createError({
             statusCode: 422,
             statusMessage: 'Player is already a ruler in another state',
@@ -274,6 +278,32 @@ export async function declareNewState(
     }
 }
 
+/**
+ * Вспомогательная функция для преобразования flag_link.
+ * Добавляет префикс /distant-api/ к локальным ссылкам.
+ * @param flagLink - Ссылка на флаг.
+ * @returns {string | null} Преобразованная ссылка на флаг или null.
+ */
+function transformFlagLink(flagLink: string | null): string | null {
+    if (!flagLink) {
+        return null;
+    }
+    // Не изменяем абсолютные URL-адреса
+    if (flagLink.startsWith('http://') || flagLink.startsWith('https://')) {
+        return flagLink;
+    }
+
+    const prefix = "/distant-api";
+
+    // Если ссылка уже начинается со слеша (например, /defaults/flag.png)
+    if (flagLink.startsWith('/')) {
+        return prefix + flagLink; // результат: /distant-api/defaults/flag.png
+    } else {
+        // Для относительных путей (например, flags/hash.png)
+        return prefix + '/' + flagLink; // результат: /distant-api/flags/hash.png
+    }
+}
+
 export type StateFilter = Partial<{
     name: string
     description: string
@@ -362,6 +392,13 @@ export async function searchStatesByFilters(
             : sql.all()
     ) as IState[]
 
+    if (!rows || rows.length === 0) {
+        return []
+    }
+    // Преобразуем ссылки на флаги
+    for (const row of rows) {
+        row.flag_link = transformFlagLink(row.flag_link)
+    }
     return rows
 }
 
