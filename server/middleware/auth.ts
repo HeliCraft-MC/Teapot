@@ -10,12 +10,13 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/auth\/refresh$/ },
     { pattern: /^\/auth\/logout$/ },
     { pattern: /^\/user\/[^/]+\/skin(?:\/head)?(?:\.png)?$/, methods: ['GET'] },
+    { pattern: /^\/user\/[^/]$/, methods: ['GET'] }, // /user/UUID
     { pattern: /^\/$/ },
     { pattern: /^\/_scalar$/ },
     { pattern: /^\/_swagger$/ },
     { pattern: /^\/_openapi\.json$/ },
     { pattern: /^\/state\/list$/ },
-    { pattern: /^\/state\/search$/ },
+    { pattern: /^\/state\/search(\/.*)$/ },
     { pattern: /^\/server\/status$/ },
     { pattern: /^\/flags(\/.*)?$/ },
 ]

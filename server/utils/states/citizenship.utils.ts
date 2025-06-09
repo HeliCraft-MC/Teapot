@@ -147,6 +147,24 @@ export async function isPlayerRulerSomewhere(playerUuid: string): Promise<boolea
     return result.count > 0
 }
 
+export async function isDiplomaticActionsAllowedForPlayer(playerUuid: string) {
+    const db = useDatabase('states');
+    const req = db.prepare(
+        'SELECT state_uuid FROM state_members WHERE player_uuid = ? AND role IN (?, ?, ?, ?)'
+    );
+    const rows = await req.all(
+        playerUuid,
+        RolesInState.DIPLOMAT,
+        RolesInState.MINISTER,
+        RolesInState.VICE_RULER,
+        RolesInState.RULER
+    ) as { state_uuid: string }[];
+    return rows.map(row => ({
+        stateUuid: row.state_uuid,
+                isDiplomaticActionsAllowed: true
+    }));
+}
+
 export async function isPlayerInAnyState(playerUuid: string): Promise<boolean> {
     const db = useDatabase('states')
     const req = db.prepare('SELECT COUNT(*) as count FROM state_members WHERE player_uuid = ?')

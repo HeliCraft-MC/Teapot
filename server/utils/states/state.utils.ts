@@ -305,6 +305,7 @@ function transformFlagLink(flagLink: string | null): string | null {
 }
 
 export type StateFilter = Partial<{
+    search: string
     name: string
     description: string
     colorHex: string
@@ -336,6 +337,7 @@ export async function searchStatesByFilters(
     const db = useDatabase('states')
 
     const columnMap: Record<keyof StateFilter, string> = {
+        search:                   'name', // Поиск по имени
         name:                     'name',
         description:              'description',
         colorHex:                 'color_hex',
@@ -574,6 +576,106 @@ export async function deleteState(stateUuid: string, adminUuid: string): Promise
     }
 
     return
+}
+
+export async function denonceState(stateUuid: string, playerUuid: string): Promise<void> {
+    if (!await isUserAdmin(playerUuid) || !(await isPlayerInState(playerUuid, stateUuid) && await getStateMemberRole(stateUuid, playerUuid) == RolesInState.RULER)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        })
+    }
+    try {
+        await getStateByUuid(stateUuid)
+    } catch (e) {
+        throw e;
+    }
+
+    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    const req = await sql.run(StateStatus.DISSOLVED, Date.now(), stateUuid)
+
+    if (!req.success) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to denounce state',
+            data: { statusMessageRu: 'Не удалось денонсировать государство' }
+        })
+    } else {
+        // create history event
+        const historyEvent: IHistoryEvent = {
+            uuid: uuidv4(),
+            created: Date.now(),
+            updated: Date.now(),
+            type: HistoryEventType.STATE_STATUS_CHANGED,
+            title: "Денонсировано государство",
+            description: `Государство было денонсировано.`,
+            state_uuids: [stateUuid],
+            player_uuids: [playerUuid],
+            alliance_uuids: null,
+            war_uuid: null,
+            city_uuids: null,
+            details_json: null,
+            created_by_uuid: playerUuid,
+            season: null,
+            is_deleted: false,
+            deleted_at: null,
+            deleted_by_uuid: null
+        }
+        await addHistoryEvent(historyEvent)
+    }
+
+    return;
+}
+
+export async function reanonceState(stateUuid: string, playerUuid: string): Promise<void>{
+    if (!await isUserAdmin(playerUuid) || !(await isPlayerInState(playerUuid, stateUuid) && await getStateMemberRole(stateUuid, playerUuid) == RolesInState.RULER)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        })
+    }
+    try {
+        await getStateByUuid(stateUuid)
+    } catch (e) {
+        throw e;
+    }
+
+    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    const req = await sql.run(StateStatus.DISSOLVED, Date.now(), stateUuid)
+
+    if (!req.success) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to denounce state',
+            data: { statusMessageRu: 'Не удалось денонсировать государство' }
+        })
+    } else {
+        // create history event
+        const historyEvent: IHistoryEvent = {
+            uuid: uuidv4(),
+            created: Date.now(),
+            updated: Date.now(),
+            type: HistoryEventType.STATE_STATUS_CHANGED,
+            title: "Восстановлено государство",
+            description: `Государство было восстановлено.`,
+            state_uuids: [stateUuid],
+            player_uuids: [playerUuid],
+            alliance_uuids: null,
+            war_uuid: null,
+            city_uuids: null,
+            details_json: null,
+            created_by_uuid: playerUuid,
+            season: null,
+            is_deleted: false,
+            deleted_at: null,
+            deleted_by_uuid: null
+        }
+        await addHistoryEvent(historyEvent)
+    }
+
+    return;
 }
 
 
