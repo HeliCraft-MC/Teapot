@@ -9,7 +9,15 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/auth\/login(?:\?.*)?$/ },
     { pattern: /^\/auth\/refresh$/ },
     { pattern: /^\/auth\/logout$/ },
-    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?(?:\.png)?$/, methods: ['GET'] }
+    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?(?:\.png)?$/, methods: ['GET'] },
+    { pattern: /^\/$/ },
+    { pattern: /^\/_scalar$/ },
+    { pattern: /^\/_swagger$/ },
+    { pattern: /^\/_openapi\.json$/ },
+    { pattern: /^\/state\/list$/ },
+    { pattern: /^\/state\/search$/ },
+    { pattern: /^\/server\/status$/ },
+    { pattern: /^\/flags(\/.*)?$/ },
 ]
 
 export default defineEventHandler(async (event) => {
@@ -25,11 +33,18 @@ export default defineEventHandler(async (event) => {
     }
 
     /* 2. Bearer */
+    // Сначала пробуем получить токен из куки
+    const cookies = parseCookies(event)
+    let accessToken = cookies.refreshToken
+
+    // Если не найден в куки, пробуем заголовок авторизации
+    if (!accessToken) {
     const authHeader = getHeader(event, 'authorization')
     if (!authHeader?.startsWith('Bearer ')) {
         throw createError({ statusCode: 401, statusMessage: 'Missing Bearer' })
     }
-    const accessToken = authHeader.slice(7)
+      accessToken = authHeader.slice(7)
+    }
 
     /* 3. проверяем JWT + БД */
     let payload: any

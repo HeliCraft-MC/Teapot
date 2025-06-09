@@ -5,7 +5,20 @@ export default defineNitroConfig({
     srcDir: "server",
     experimental: {
         asyncContext: true,
-        database: true
+        database: true,
+        openAPI: true,
+    },
+    openAPI: {
+        ui: {
+            scalar: {
+                theme: 'purple'
+            }
+        },
+        meta: {
+            title: 'HeliCraft Backend API',
+            description: 'Backend API for HeliCraft project',
+            version: '1.0'
+        }
     },
     database: {
         default: {
