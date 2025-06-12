@@ -426,6 +426,116 @@ export async function getStateMembers(stateUuid: string): Promise<IStateMember[]
     return members
 }
 
+export async function updateState(
+    stateUuid: string,
+    patch: {
+        name?: string
+        description?: string
+        color?: string
+        govForm?: GovernmentForm
+        hasElections?: boolean
+        telegramLink?: string | null
+        allowDualCitizenship?: boolean
+        freeEntry?: boolean
+        freeEntryDescription?: string | null
+        flag?: Buffer | string
+    },
+    updaterUuid: string
+): Promise<void> {
+    if (!await isUserAdmin(updaterUuid) && !(await isPlayerInState(updaterUuid, stateUuid) && await getStateMemberRole(stateUuid, updaterUuid) == RolesInState.RULER)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Недостаточно прав' }
+        })
+    }
+
+    const current = await getStateByUuid(stateUuid)
+
+    const cols: string[] = []
+    const params: any[] = []
+
+    if (patch.name !== undefined) {
+        if (patch.name !== current.name) {
+            await assertState(patch.name, true)
+        }
+        cols.push('name = ?')
+        params.push(patch.name)
+    }
+    if (patch.description !== undefined) {
+        cols.push('description = ?')
+        params.push(patch.description)
+    }
+    if (patch.color !== undefined) {
+        assertColor(patch.color)
+        cols.push('color_hex = ?')
+        params.push(patch.color)
+    }
+    if (patch.govForm !== undefined) {
+        cols.push('gov_form = ?')
+        params.push(patch.govForm)
+    }
+    if (patch.hasElections !== undefined) {
+        cols.push('has_elections = ?')
+        params.push(patch.hasElections ? 1 : 0)
+    }
+    if (patch.telegramLink !== undefined) {
+        cols.push('telegram_link = ?')
+        params.push(patch.telegramLink)
+    }
+    if (patch.allowDualCitizenship !== undefined) {
+        cols.push('allow_dual_citizenship = ?')
+        params.push(patch.allowDualCitizenship ? 1 : 0)
+    }
+    if (patch.freeEntry !== undefined) {
+        cols.push('free_entry = ?')
+        params.push(patch.freeEntry ? 1 : 0)
+    }
+    if (patch.freeEntryDescription !== undefined) {
+        cols.push('free_entry_description = ?')
+        params.push(patch.freeEntryDescription)
+    }
+    if (patch.flag !== undefined) {
+        let flagLink: string
+        if (typeof patch.flag === 'string') {
+            const isLocal = patch.flag.startsWith('/')
+            const isRemote = patch.flag.startsWith('http://') || patch.flag.startsWith('https://')
+            if ((!isLocal && !isRemote) || !patch.flag.endsWith('.png')) {
+                throw createError({ statusCode: 422, statusMessage: 'Invalid flag link', data: { statusMessageRu: 'Неверная ссылка на флаг' } })
+            }
+            flagLink = patch.flag
+        } else if (Buffer.isBuffer(patch.flag)) {
+            flagLink = await flagToUploads(patch.flag)
+        } else {
+            throw createError({ statusCode: 422, statusMessage: 'Invalid flag type', data: { statusMessageRu: 'Неверный тип флага' } })
+        }
+        cols.push('flag_link = ?')
+        params.push(flagLink)
+    }
+
+    if (!cols.length) {
+        throw createError({
+            statusCode: 400,
+            statusMessage: 'No fields to update',
+            data: { statusMessageRu: 'Нет полей для обновления' }
+        })
+    }
+
+    cols.push('updated = ?')
+    params.push(Date.now())
+    params.push(stateUuid)
+
+    const sql = db().prepare(`UPDATE states SET ${cols.join(', ')} WHERE uuid = ?`)
+    const req = await sql.run(...params)
+    if (!req.success) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to update state',
+            data: { statusMessageRu: 'Не удалось обновить государство' }
+        })
+    }
+}
+
 export async function approveState(stateUuid: string, adminUuid: string): Promise<void> {
     if (!await isUserAdmin(adminUuid)) {
         throw createError({
