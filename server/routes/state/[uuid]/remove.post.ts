@@ -3,7 +3,8 @@ defineRouteMeta({
     tags: ['state'],
     description: 'Remove a member from state',
     parameters: [
-      { in: 'path', name: 'uuid', required: true }
+      { in: 'path', name: 'uuid', required: true },
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
     ],
     requestBody: {
       description: 'Member and initiator UUIDs',

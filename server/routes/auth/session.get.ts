@@ -3,6 +3,9 @@ defineRouteMeta({
   openAPI: {
     tags: ['auth'],
     description: 'Return session information',
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     responses: {
       200: {
         description: 'Authenticated session',

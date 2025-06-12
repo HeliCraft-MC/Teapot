@@ -2,6 +2,9 @@ defineRouteMeta({
   openAPI: {
     tags: ['relations'],
     description: 'Request a change in relations between two states',
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     requestBody: {
       description: 'Proposer state, target state, desired kind and proposer player UUID',
       required: true,

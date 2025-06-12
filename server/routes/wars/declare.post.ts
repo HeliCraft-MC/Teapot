@@ -2,9 +2,35 @@ defineRouteMeta({
   openAPI: {
     tags: ['wars'],
     description: 'Declare a new war',
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     requestBody: {
       description: 'War details',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              attackerStateUuid: { type: 'string' },
+              defenderStateUuid: { type: 'string' },
+              attackerPlayerUuid: { type: 'string' },
+              name: { type: 'string' },
+              reason: { type: 'string' },
+              victoryCondition: { type: 'string' }
+            },
+            required: [
+              'attackerStateUuid',
+              'defenderStateUuid',
+              'attackerPlayerUuid',
+              'name',
+              'reason',
+              'victoryCondition'
+            ]
+          }
+        }
+      }
     },
     responses: {
       200: {

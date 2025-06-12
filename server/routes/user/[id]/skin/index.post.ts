@@ -6,7 +6,8 @@ defineRouteMeta({
     tags: ['user'],
     description: 'Upload a new player skin',
     parameters: [
-      { in: 'path', name: 'id', required: true }
+      { in: 'path', name: 'id', required: true },
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
     ],
     requestBody: { description: 'PNG skin file', required: true },
     responses: {

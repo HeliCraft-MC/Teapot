@@ -2,6 +2,10 @@ defineRouteMeta({
   openAPI: {
     tags: ['state'],
     description: 'Search states',
+    parameters: [
+      { in: 'query', name: 'startAt', required: false, schema: { type: 'number' } },
+      { in: 'query', name: 'limit', required: false, schema: { type: 'number' } }
+    ],
     responses: {
       200: {
         description: 'Matching states',

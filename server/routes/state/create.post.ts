@@ -2,6 +2,9 @@ import {declareNewState} from "~/utils/states/state.utils";
 import {H3Error, MultiPartData} from "h3";
 import {fileTypeFromBuffer} from "file-type";
 import sharp from "sharp";
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     requestBody: {
       description: 'State details and flag image',
       required: true,

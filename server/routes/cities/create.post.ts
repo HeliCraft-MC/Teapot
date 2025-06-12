@@ -2,6 +2,9 @@ defineRouteMeta({
   openAPI: {
     tags: ['cities'],
     description: 'Create a new city',
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     requestBody: {
       description: 'City info',
       required: true,

@@ -3,11 +3,35 @@ defineRouteMeta({
     tags: ['wars'],
     description: 'Create a battle for a war',
     parameters: [
-      { in: 'path', name: 'uuid', required: true }
+      { in: 'path', name: 'uuid', required: true },
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
     ],
     requestBody: {
       description: 'Battle details',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              creatorStateUuid: { type: 'string' },
+              creatorPlayerUuid: { type: 'string' },
+              name: { type: 'string' },
+              description: { type: 'string' },
+              type: { type: 'string' },
+              startDate: { type: 'number' }
+            },
+            required: [
+              'creatorStateUuid',
+              'creatorPlayerUuid',
+              'name',
+              'description',
+              'type',
+              'startDate'
+            ]
+          }
+        }
+      }
     },
     responses: {
       200: {

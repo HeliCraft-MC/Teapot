@@ -2,6 +2,13 @@ defineRouteMeta({
   openAPI: {
     tags: ['history'],
     description: 'List history events',
+    parameters: [
+      { in: 'query', name: 'startAt', required: false, schema: { type: 'number' } },
+      { in: 'query', name: 'limit', required: false, schema: { type: 'number' } },
+      { in: 'query', name: 'stateUuid', required: false, schema: { type: 'string' } },
+      { in: 'query', name: 'playerUuid', required: false, schema: { type: 'string' } },
+      { in: 'query', name: 'warUuid', required: false, schema: { type: 'string' } }
+    ],
     responses: {
       200: {
         description: 'Array of history events',

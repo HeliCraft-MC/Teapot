@@ -3,7 +3,8 @@ defineRouteMeta({
     tags: ['alliances'],
     description: 'Leave an alliance',
     parameters: [
-      { in: 'path', name: 'uuid', required: true }
+      { in: 'path', name: 'uuid', required: true },
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
     ],
     requestBody: {
       description: 'State and player UUIDs',

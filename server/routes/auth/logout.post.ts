@@ -4,6 +4,9 @@ defineRouteMeta({
   openAPI: {
     tags: ['auth'],
     description: 'Logout current user',
+    parameters: [
+      { in: 'cookie', name: 'refreshToken', required: false, schema: { type: 'string' } }
+    ],
     responses: {
       200: {
         description: 'Logout successful',

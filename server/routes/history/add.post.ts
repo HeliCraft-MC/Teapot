@@ -2,6 +2,9 @@ defineRouteMeta({
   openAPI: {
     tags: ['history'],
     description: 'Add a history event',
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     requestBody: {
       description: 'History event data',
       required: true,

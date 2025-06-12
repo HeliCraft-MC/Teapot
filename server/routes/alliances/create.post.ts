@@ -2,6 +2,9 @@ defineRouteMeta({
   openAPI: {
     tags: ['alliances'],
     description: 'Create a new alliance',
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
     requestBody: {
       description: 'Alliance details',
       required: true,
