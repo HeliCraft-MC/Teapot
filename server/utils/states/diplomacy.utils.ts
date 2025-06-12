@@ -13,16 +13,15 @@ import {
     RelationKind,
     IStateRelationRequest,
     RelationRequestStatus,
-} from '~/interfaces/state/diplomacy.types'                 // :contentReference[oaicite:0]{index=0}
-import { IBaseEntity } from '~/interfaces/state/common.types'  // :contentReference[oaicite:1]{index=1}
+} from 'Аdiplomacy.types'
 import {
     IHistoryEvent,
     HistoryEventType,
-} from '~/interfaces/state/history.types'                     // :contentReference[oaicite:2]{index=2}
+} from '~/interfaces/state/history.types'
 import { getStateByUuid } from '~/utils/states/state.utils'
 import { addHistoryEvent } from '~/utils/states/history.utils'
 import { v4 as uuidv4 } from 'uuid'
-import {RolesInState} from "../../../../HeliCraftFrontNuxtVesper/types/state.types";
+import {RolesInState} from "~/interfaces/state/state.types";
 
 /** Быстрый доступ к БД «states» */
 const db = () => useDatabase('states')
