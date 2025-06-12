@@ -2,7 +2,7 @@ import {declareNewState} from "~/utils/states/state.utils";
 import {H3Error, MultiPartData} from "h3";
 import {fileTypeFromBuffer} from "file-type";
 import sharp from "sharp";
-import { GovernmentForm } from "../../../../HeliCraftFrontNuxtVesper/types/state.types";
+import { GovernmentForm } from "~/interfaces/state/state.types";
 
 defineRouteMeta({
   openAPI: {

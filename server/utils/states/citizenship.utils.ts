@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import {getStateByUuid} from "~/utils/states/state.utils";
-import {RolesInState} from "../../../../HeliCraftFrontNuxtVesper/types/state.types";
+import {RolesInState} from "~/interfaces/state/state.types";
 
 export async function applyForMembership(stateUuid: string, applicantUuid: string): Promise<void> {
     if (!await getStateByUuid(stateUuid)) {

@@ -1,4 +1,4 @@
-import {GovernmentForm, StateStatus, IStateMember, IState, RolesInState} from '../../../../HeliCraftFrontNuxtVesper/types/state.types'
+import {GovernmentForm, StateStatus, IStateMember, IState, RolesInState} from '~/interfaces/state/state.types'
 import { IHistoryEvent, HistoryEventType } from "~/interfaces/state/history.types";
 import { v4 as uuidv4 } from 'uuid'
 import { promises as fsp } from 'node:fs'
