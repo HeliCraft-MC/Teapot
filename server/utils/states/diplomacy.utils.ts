@@ -13,7 +13,7 @@ import {
     RelationKind,
     IStateRelationRequest,
     RelationRequestStatus,
-} from 'Аdiplomacy.types'
+} from '~/interfaces/state/diplomacy.types'
 import {
     IHistoryEvent,
     HistoryEventType,

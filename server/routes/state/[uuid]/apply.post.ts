@@ -38,7 +38,7 @@ defineRouteMeta({
 
 export default defineEventHandler(async (event) => {
     const stateUuid = getRouterParam(event, 'uuid')
-    const { applicantUuid } = await readBody(event)
-    await applyForMembership(stateUuid, applicantUuid)
+  const { uuid } = event.context.auth || {}
+    await applyForMembership(stateUuid, uuid)
     return { ok: true }
 })

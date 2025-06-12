@@ -120,6 +120,21 @@ export async function getUserByNickname(nickname: string): Promise<AuthUser> {
   return user
 }
 
+export async function searchUsers(query: string, startAt?: number, limit?: number): Promise<AuthUser[]> {
+    const db = useDatabase()
+    const stmt = db.prepare(
+        'SELECT * FROM AUTH WHERE LOWERCASENICKNAME LIKE ? LIMIT ?, ?'
+    )
+    const users = await stmt.all(
+        `%${normalizeNickname(query)}%`,
+        startAt ?? 0,  // установим 0 по умолчанию, если startAt равен null/undefined
+        limit ?? 10    // установим 10 по умолчанию, если limit равен null/undefined
+    ) as AuthUser[]
+
+    // Возвращаем пустой массив вместо ошибки, если ничего не найдено
+    return users
+}
+
 /**
  * Смена никнейма
  *

@@ -33,9 +33,9 @@ export async function applyForMembership(stateUuid: string, applicantUuid: strin
             Date.now(),
             Date.now(),
             stateUuid,
-        null,
-        applicantUuid,
-        RolesInState.APPLICANT
+            null,
+            applicantUuid,
+            RolesInState.APPLICANT
     );
 }
 

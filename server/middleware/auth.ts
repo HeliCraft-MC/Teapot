@@ -19,6 +19,11 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/state\/search(\/.*)$/ },
     { pattern: /^\/server\/status$/ },
     { pattern: /^\/flags(\/.*)?$/ },
+    { pattern: /^\/state\/[^/]+$/, methods: ['GET'] },
+    { pattern: /^\/user\/[^/]+$/, methods: ['GET'] }, // /user/UUID
+    { pattern: /^\/order\/list(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/warrant\/list(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/history\/list(?:\?.*)?$/, methods: ['GET'] },
 ]
 
 export default defineEventHandler(async (event) => {
@@ -36,7 +41,7 @@ export default defineEventHandler(async (event) => {
     /* 2. Bearer */
     // Сначала пробуем получить токен из куки
     const cookies = parseCookies(event)
-    let accessToken = cookies.refreshToken
+    let accessToken = cookies.refreshToken || cookies['auth.token']
 
     // Если не найден в куки, пробуем заголовок авторизации
     if (!accessToken) {
