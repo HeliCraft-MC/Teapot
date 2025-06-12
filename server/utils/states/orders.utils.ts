@@ -94,7 +94,11 @@ export async function updateWarrant(uuid: string, patch: Partial<IStateWarrant>,
     const sql = `UPDATE state_warrants SET ${cols.join(', ')} WHERE uuid = ?`
     const res = await db().prepare(sql).run(...params)
     if (!res.success) {
-        throw createError({ statusCode: 500, statusMessage: 'Failed to update warrant' })
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to update warrant',
+            data: { statusMessageRu: 'Не удалось обновить ордер' }
+        })
     }
 }
 
