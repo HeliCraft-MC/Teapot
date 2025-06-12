@@ -629,7 +629,7 @@ export async function denonceState(stateUuid: string, playerUuid: string): Promi
 }
 
 export async function reanonceState(stateUuid: string, playerUuid: string): Promise<void>{
-    if (!await isUserAdmin(playerUuid) || !(await isPlayerInState(playerUuid, stateUuid) && await getStateMemberRole(stateUuid, playerUuid) == RolesInState.RULER)) {
+    if (!await isUserAdmin(playerUuid) && !(await isPlayerInState(playerUuid, stateUuid) && await getStateMemberRole(stateUuid, playerUuid) == RolesInState.RULER)) {
         throw createError({
             statusCode: 403,
             statusMessage: 'Forbidden',
