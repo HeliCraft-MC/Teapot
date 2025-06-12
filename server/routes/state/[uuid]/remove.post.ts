@@ -3,17 +3,37 @@ defineRouteMeta({
     tags: ['state'],
     description: 'Remove a member from state',
     parameters: [
-      { in: 'path', name: 'uuid', required: true }
+      { in: 'path', name: 'uuid', required: true },
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
     ],
     requestBody: {
       description: 'Member and initiator UUIDs',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              uuidToRemove: { type: 'string' },
+              uuidWhoRemoved: { type: 'string' }
+            },
+            required: ['uuidToRemove', 'uuidWhoRemoved']
+          }
+        }
+      }
     },
-    responses: {
-      200: { description: 'Member removed' },
-      403: { description: 'Insufficient permissions' },
-      404: { description: 'State not found' }
-    }
+      responses: {
+        200: {
+          description: 'Member removed',
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+            }
+          }
+        },
+        403: { description: 'Insufficient permissions' },
+        404: { description: 'State not found' }
+      }
   }
 })
 

@@ -7,7 +7,14 @@ defineRouteMeta({
     ],
     requestBody: { description: 'Administrator UUID', required: true },
     responses: {
-      200: { description: 'War scheduled' },
+      200: {
+        description: 'War scheduled',
+        content: {
+          'application/json': {
+            schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+          }
+        }
+      },
       400: { description: 'War must be accepted' },
       403: { description: 'Not authorized' },
       404: { description: 'War not found' }

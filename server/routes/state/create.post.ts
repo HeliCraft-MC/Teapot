@@ -2,13 +2,59 @@ import {declareNewState} from "~/utils/states/state.utils";
 import {H3Error, MultiPartData} from "h3";
 import {fileTypeFromBuffer} from "file-type";
 import sharp from "sharp";
+    parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+    ],
+    requestBody: {
+      description: 'State details and flag image',
+      required: true,
+      content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              color: { type: 'string' },
+              govForm: { type: 'string' },
+              hasElections: { type: 'boolean' },
+              telegramLink: { type: 'string' },
+              allowDualCitezenship: { type: 'boolean' },
+              freeEntry: { type: 'boolean' },
+              freeEntryDesc: { type: 'string' },
+              file: { type: 'string', format: 'binary' }
+            },
+            required: ['name', 'description', 'color', 'govForm', 'hasElections', 'file']
+          }
+        }
+      }
+    },
 import { GovernmentForm } from "../../../../HeliCraftFrontNuxtVesper/types/state.types";
 
 defineRouteMeta({
-    openAPI: {
-        tags: ['state'],
-        description: 'Create a state'
+  openAPI: {
+    tags: ['state'],
+    description: 'Create a state',
+    responses: {
+      200: {
+        description: 'State created',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                uuid: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
+      401: { description: 'Unauthenticated' },
+      413: { description: 'File too big' },
+      415: { description: 'PNG only' },
+      500: { description: 'Unexpected server error' }
     }
+  }
 })
 
 export default defineEventHandler(async (event) => {

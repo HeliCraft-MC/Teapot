@@ -7,10 +7,33 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Reviewer info and decision',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              reviewerStateUuid: { type: 'string' },
+              reviewerPlayerUuid: { type: 'string' },
+              approve: { type: 'boolean' }
+            },
+            required: ['reviewerStateUuid', 'reviewerPlayerUuid', 'approve']
+          }
+        }
+      }
     },
     responses: {
-      200: { description: 'Request reviewed' },
+      200: {
+        description: 'Request reviewed',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       403: { description: 'Not authorized' },
       404: { description: 'Request not found' }
     }

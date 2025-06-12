@@ -6,7 +6,17 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'City deleted' },
+      200: {
+        description: 'City deleted',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       404: { description: 'City not found' }
     }
   }

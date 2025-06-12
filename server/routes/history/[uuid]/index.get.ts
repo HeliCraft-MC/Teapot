@@ -6,7 +6,14 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'History event data' },
+      200: {
+        description: 'History event data',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/IHistoryEvent' }
+          }
+        }
+      },
       404: { description: 'History event not found' }
     }
   }

@@ -6,7 +6,14 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'Alliance info' },
+      200: {
+        description: 'Alliance info',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/IAlliance' }
+          }
+        }
+      },
       404: { description: 'Alliance not found' }
     }
   }

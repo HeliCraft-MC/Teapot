@@ -3,14 +3,37 @@ defineRouteMeta({
     tags: ['alliances'],
     description: 'Dissolve an alliance',
     parameters: [
-      { in: 'path', name: 'uuid', required: true }
+      { in: 'path', name: 'uuid', required: true },
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
     ],
     requestBody: {
       description: 'Initiator and state info',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              byPlayerUuid: { type: 'string' },
+              stateUuid: { type: 'string', nullable: true }
+            },
+            required: ['byPlayerUuid']
+          }
+        }
+      }
     },
     responses: {
-      200: { description: 'Alliance dissolved' },
+      200: {
+        description: 'Alliance dissolved',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       403: { description: 'Not authorized' }
     }
   }

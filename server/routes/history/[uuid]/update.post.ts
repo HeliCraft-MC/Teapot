@@ -7,7 +7,17 @@ defineRouteMeta({
     ],
     requestBody: { description: 'Patch fields', required: true },
     responses: {
-      200: { description: 'Event updated' }
+      200: {
+        description: 'Event updated',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      }
     }
   }
 })

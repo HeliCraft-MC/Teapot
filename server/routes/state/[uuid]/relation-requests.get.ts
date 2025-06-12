@@ -5,9 +5,16 @@ defineRouteMeta({
     parameters: [
       { in: 'path', name: 'uuid', required: true }
     ],
-    responses: {
-      200: { description: 'Pending requests list' }
-    }
+      responses: {
+        200: {
+          description: 'Pending requests list',
+          content: {
+          'application/json': {
+              schema: { type: 'array', items: { $ref: '#/components/schemas/IStateRelationRequest' } }
+          }
+          }
+        }
+      }
   }
 })
 

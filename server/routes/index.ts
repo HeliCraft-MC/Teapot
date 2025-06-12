@@ -3,7 +3,12 @@ defineRouteMeta({
     tags: ['general'],
     description: 'Default landing route',
     responses: {
-      200: { description: 'Greeting message' }
+      200: {
+        description: 'Greeting message',
+        content: {
+          'text/plain': { schema: { type: 'string' } }
+        }
+      }
     }
   }
 })

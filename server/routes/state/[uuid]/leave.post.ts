@@ -7,13 +7,29 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Player UUID',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: { playerUuid: { type: 'string' } },
+            required: ['playerUuid']
+          }
+        }
+      }
     },
-    responses: {
-      200: { description: 'Left state' },
-      400: { description: 'Cannot leave as ruler' },
-      404: { description: 'State or player not found' }
-    }
+      responses: {
+        200: {
+          description: 'Left state',
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+            }
+          }
+        },
+        400: { description: 'Cannot leave as ruler' },
+        404: { description: 'State or player not found' }
+      }
   }
 })
 

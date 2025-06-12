@@ -4,10 +4,36 @@ defineRouteMeta({
     description: 'Login a user',
     requestBody: {
       description: 'Nickname and password',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              nickname: { type: 'string' },
+              password: { type: 'string' }
+            },
+            required: ['nickname', 'password']
+          }
+        }
+      }
     },
     responses: {
-      200: { description: 'Login successful' },
+      200: {
+        description: 'Login successful',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                uuid: { type: 'string' },
+                nickname: { type: 'string' },
+                accessToken: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
       401: { description: 'Invalid password' },
       404: { description: 'User not found' }
     }

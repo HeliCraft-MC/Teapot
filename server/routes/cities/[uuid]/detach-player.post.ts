@@ -7,10 +7,29 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Player UUID',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: { playerUuid: { type: 'string' } },
+            required: ['playerUuid']
+          }
+        }
+      }
     },
     responses: {
-      200: { description: 'Player detached' },
+      200: {
+        description: 'Player detached',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       500: { description: 'Failed to detach player' }
     }
   }

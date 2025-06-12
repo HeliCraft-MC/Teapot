@@ -9,12 +9,19 @@ defineRouteMeta({
       description: 'Administrator UUID',
       required: true
     },
-    responses: {
-      200: { description: 'State approved' },
-      403: { description: 'Forbidden' },
-      404: { description: 'State not found' },
-      500: { description: 'Failed to approve state' }
-    }
+      responses: {
+        200: {
+          description: 'State approved',
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { ok: { type: 'boolean' } } }
+            }
+          }
+        },
+        403: { description: 'Forbidden' },
+        404: { description: 'State not found' },
+        500: { description: 'Failed to approve state' }
+      }
   }
 })
 

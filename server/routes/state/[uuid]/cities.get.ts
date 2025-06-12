@@ -5,9 +5,16 @@ defineRouteMeta({
     parameters: [
       { in: 'path', name: 'uuid', required: true }
     ],
-    responses: {
-      200: { description: 'List of cities' }
-    }
+      responses: {
+        200: {
+          description: 'List of cities',
+          content: {
+          'application/json': {
+              schema: { type: 'array', items: { $ref: '#/components/schemas/ICity' } }
+          }
+          }
+        }
+      }
   }
 })
 

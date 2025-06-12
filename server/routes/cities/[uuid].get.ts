@@ -6,7 +6,14 @@ defineRouteMeta({
       { in: 'path', name: 'uuid', required: true }
     ],
     responses: {
-      200: { description: 'City data or null if not found' }
+      200: {
+        description: 'City data or null if not found',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ICity' }
+          }
+        }
+      }
     }
   }
 })

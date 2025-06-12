@@ -2,9 +2,35 @@ defineRouteMeta({
   openAPI: {
     tags: ['auth'],
     description: 'Refresh authentication tokens',
-    requestBody: { description: 'User UUID', required: true },
+    requestBody: {
+      description: 'User UUID',
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: { uuid: { type: 'string' } },
+            required: ['uuid']
+          }
+        }
+      }
+    },
     responses: {
-      200: { description: 'Tokens refreshed' },
+      200: {
+        description: 'Tokens refreshed',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                accessToken: { type: 'string' },
+                uuid: { type: 'string' },
+                nickname: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
       401: { description: 'Invalid refresh token' },
       404: { description: 'User not found' }
     }

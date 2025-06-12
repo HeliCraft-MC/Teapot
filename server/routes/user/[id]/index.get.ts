@@ -8,7 +8,22 @@ defineRouteMeta({
       { in: 'path', name: 'id', required: true }
     ],
     responses: {
-      200: { description: 'User data' },
+      200: {
+        description: 'User data',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                uuid: { type: 'string' },
+                nickname: { type: 'string' },
+                regDate: { type: 'number' },
+                loginDate: { type: 'number' }
+              }
+            }
+          }
+        }
+      },
       400: { description: 'Invalid id' },
       404: { description: 'User not found' }
     }

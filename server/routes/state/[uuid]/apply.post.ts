@@ -7,10 +7,29 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Applicant UUID',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: { applicantUuid: { type: 'string' } },
+            required: ['applicantUuid']
+          }
+        }
+      }
     },
     responses: {
-      200: { description: 'Application submitted' },
+      200: {
+        description: 'Application submitted',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { ok: { type: 'boolean' } }
+            }
+          }
+        }
+      },
       400: { description: 'Already a member or dual citizenship not allowed' },
       404: { description: 'State not found' }
     }
