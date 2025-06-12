@@ -4,7 +4,19 @@ defineRouteMeta({
     description: 'Login a user',
     requestBody: {
       description: 'Nickname and password',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              nickname: { type: 'string' },
+              password: { type: 'string' }
+            },
+            required: ['nickname', 'password']
+          }
+        }
+      }
     },
     responses: {
       200: {

@@ -7,7 +7,16 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Applicant UUID',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: { applicantUuid: { type: 'string' } },
+            required: ['applicantUuid']
+          }
+        }
+      }
     },
     responses: {
       200: {

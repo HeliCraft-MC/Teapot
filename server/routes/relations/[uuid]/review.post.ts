@@ -7,7 +7,20 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Reviewer info and decision',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              reviewerStateUuid: { type: 'string' },
+              reviewerPlayerUuid: { type: 'string' },
+              approve: { type: 'boolean' }
+            },
+            required: ['reviewerStateUuid', 'reviewerPlayerUuid', 'approve']
+          }
+        }
+      }
     },
     responses: {
       200: {

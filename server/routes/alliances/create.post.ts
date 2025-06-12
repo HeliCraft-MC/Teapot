@@ -4,7 +4,32 @@ defineRouteMeta({
     description: 'Create a new alliance',
     requestBody: {
       description: 'Alliance details',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              creatorStateUuid: { type: 'string' },
+              creatorPlayerUuid: { type: 'string' },
+              name: { type: 'string' },
+              description: { type: 'string' },
+              purpose: { type: 'string' },
+              colorHex: { type: 'string' },
+              flagLink: { type: 'string' }
+            },
+            required: [
+              'creatorStateUuid',
+              'creatorPlayerUuid',
+              'name',
+              'description',
+              'purpose',
+              'colorHex',
+              'flagLink'
+            ]
+          }
+        }
+      }
     },
     responses: {
       200: {

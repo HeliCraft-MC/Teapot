@@ -7,7 +7,19 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Initiator and state info',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              byPlayerUuid: { type: 'string' },
+              stateUuid: { type: 'string', nullable: true }
+            },
+            required: ['byPlayerUuid']
+          }
+        }
+      }
     },
     responses: {
       200: {

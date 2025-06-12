@@ -4,7 +4,21 @@ defineRouteMeta({
     description: 'Create a new city',
     requestBody: {
       description: 'City info',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              coordinates: { type: 'string' },
+              stateUuid: { type: 'string' },
+              isCapital: { type: 'boolean' }
+            },
+            required: ['name', 'coordinates']
+          }
+        }
+      }
     },
     responses: {
       200: {

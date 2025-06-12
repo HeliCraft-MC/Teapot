@@ -7,7 +7,20 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Applicant and reviewer info',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              applicantUuid: { type: 'string' },
+              reviewerUuid: { type: 'string' },
+              approve: { type: 'boolean' }
+            },
+            required: ['applicantUuid', 'reviewerUuid', 'approve']
+          }
+        }
+      }
     },
       responses: {
         200: {

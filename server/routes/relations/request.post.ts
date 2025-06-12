@@ -4,7 +4,21 @@ defineRouteMeta({
     description: 'Request a change in relations between two states',
     requestBody: {
       description: 'Proposer state, target state, desired kind and proposer player UUID',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              proposerStateUuid: { type: 'string' },
+              targetStateUuid: { type: 'string' },
+              requestedKind: { type: 'string' },
+              proposerPlayerUuid: { type: 'string' }
+            },
+            required: ['proposerStateUuid', 'targetStateUuid', 'requestedKind', 'proposerPlayerUuid']
+          }
+        }
+      }
     },
     responses: {
       200: {

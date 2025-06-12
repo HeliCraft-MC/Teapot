@@ -7,7 +7,21 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Applicant and approver info',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              applicantStateUuid: { type: 'string' },
+              approverStateUuid: { type: 'string' },
+              approverPlayerUuid: { type: 'string' },
+              approve: { type: 'boolean' }
+            },
+            required: ['applicantStateUuid', 'approverStateUuid', 'approverPlayerUuid', 'approve']
+          }
+        }
+      }
     },
     responses: {
       200: {

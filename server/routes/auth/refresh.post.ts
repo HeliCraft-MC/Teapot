@@ -2,7 +2,19 @@ defineRouteMeta({
   openAPI: {
     tags: ['auth'],
     description: 'Refresh authentication tokens',
-    requestBody: { description: 'User UUID', required: true },
+    requestBody: {
+      description: 'User UUID',
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: { uuid: { type: 'string' } },
+            required: ['uuid']
+          }
+        }
+      }
+    },
     responses: {
       200: {
         description: 'Tokens refreshed',

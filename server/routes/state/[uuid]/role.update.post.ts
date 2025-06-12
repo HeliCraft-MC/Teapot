@@ -7,7 +7,20 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Player and updater uuids with new role',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              playerUuid: { type: 'string' },
+              updaterUuid: { type: 'string' },
+              newRole: { type: 'string' }
+            },
+            required: ['playerUuid', 'updaterUuid', 'newRole']
+          }
+        }
+      }
     },
       responses: {
         200: {

@@ -4,7 +4,12 @@ defineRouteMeta({
     description: 'Add a history event',
     requestBody: {
       description: 'History event data',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/HistoryInsert' }
+        }
+      }
     },
     responses: {
       200: {

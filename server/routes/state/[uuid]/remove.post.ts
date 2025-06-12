@@ -7,7 +7,19 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Member and initiator UUIDs',
-      required: true
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              uuidToRemove: { type: 'string' },
+              uuidWhoRemoved: { type: 'string' }
+            },
+            required: ['uuidToRemove', 'uuidWhoRemoved']
+          }
+        }
+      }
     },
       responses: {
         200: {
