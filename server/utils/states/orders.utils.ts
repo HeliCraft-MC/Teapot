@@ -80,10 +80,14 @@ export async function updateWarrant(uuid: string, patch: Partial<IStateWarrant>,
             data: { statusMessageRu: 'Недостаточно прав для изменения ордера' }
         })
     }
+    const allowedColumns = [
+        'reason', 'actions_taken_by_admins', 'actions_by_admins_details',
+        'actions_taken_by_state', 'actions_by_state_details'
+    ]
     const cols: string[] = []
     const params: any[] = []
     for (const [key, val] of Object.entries(patch)) {
-        if (val === undefined) continue
+        if (val === undefined || !allowedColumns.includes(key)) continue
         cols.push(`${key} = ?`)
         params.push(val)
     }
