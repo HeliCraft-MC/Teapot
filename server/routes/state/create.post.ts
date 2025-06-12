@@ -2,39 +2,39 @@ import {declareNewState} from "~/utils/states/state.utils";
 import {H3Error, MultiPartData} from "h3";
 import {fileTypeFromBuffer} from "file-type";
 import sharp from "sharp";
-    parameters: [
-      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
-    ],
-    requestBody: {
-      description: 'State details and flag image',
-      required: true,
-      content: {
-        'multipart/form-data': {
-          schema: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              description: { type: 'string' },
-              color: { type: 'string' },
-              govForm: { type: 'string' },
-              hasElections: { type: 'boolean' },
-              telegramLink: { type: 'string' },
-              allowDualCitezenship: { type: 'boolean' },
-              freeEntry: { type: 'boolean' },
-              freeEntryDesc: { type: 'string' },
-              file: { type: 'string', format: 'binary' }
-            },
-            required: ['name', 'description', 'color', 'govForm', 'hasElections', 'file']
-          }
-        }
-      }
-    },
 import { GovernmentForm } from "../../../../HeliCraftFrontNuxtVesper/types/state.types";
 
 defineRouteMeta({
   openAPI: {
     tags: ['state'],
     description: 'Create a state',
+  parameters: [
+      { in: 'header', name: 'Authorization', required: true, schema: { type: 'string' } }
+  ],
+  requestBody: {
+      description: 'State details and flag image',
+      required: true,
+      content: {
+          'multipart/form-data': {
+              schema: {
+                  type: 'object',
+                  properties: {
+                      name: { type: 'string' },
+                      description: { type: 'string' },
+                      color: { type: 'string' },
+                      govForm: { type: 'string' },
+                      hasElections: { type: 'boolean' },
+                      telegramLink: { type: 'string' },
+                      allowDualCitezenship: { type: 'boolean' },
+                      freeEntry: { type: 'boolean' },
+                      freeEntryDesc: { type: 'string' },
+                      file: { type: 'string', format: 'binary' }
+                  },
+                  required: ['name', 'description', 'color', 'govForm', 'hasElections', 'file']
+              }
+          }
+      }
+  },
     responses: {
       200: {
         description: 'State created',
