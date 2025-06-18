@@ -22,6 +22,10 @@ import { getStateByUuid } from '~/utils/states/state.utils'
 import { addHistoryEvent } from '~/utils/states/history.utils'
 import { v4 as uuidv4 } from 'uuid'
 import {RolesInState} from "~/interfaces/state/state.types";
+import {dirname, join} from "pathe";
+import sharp from "sharp";
+
+import { promises as fsp } from 'node:fs'
 
 /** Быстрый доступ к БД «states» */
 const db = () => useDatabase('states')
@@ -60,6 +64,25 @@ async function assertAllianceName(name: string) {
     }
 }
 
+/**
+ * Загружает файл флага и возвращает относительный путь.
+ * @param flag - Буфер с данными изображения.
+ * @returns {Promise<string>} - Относительный путь к загруженному файлу.
+ */
+async function flagToUploads(flag: Buffer): Promise<string> {
+    const { uploadDir = './uploads' } = useRuntimeConfig();
+    const hex = uuidv4().replace(/-/g, '');
+    // Создаем более вложенную структуру для лучшего распределения файлов
+    const rel = `flags/${hex.slice(0, 2)}/${hex.slice(2, 4)}/${hex.slice(4, 6)}/${hex}.png`;
+    const abs = join(uploadDir, rel);
+
+    await fsp.mkdir(dirname(abs), { recursive: true });
+    // Используем sharp для обработки и сохранения изображения в формате PNG
+    await sharp(flag).png().toFile(abs);
+
+    return rel;
+}
+
 /** Лексикографическое упорядочение пары UUID (state_a_uuid < state_b_uuid) */
 function sortPair(a: string, b: string): [string, string] {
     return a < b ? [a, b] : [b, a]
@@ -67,6 +90,17 @@ function sortPair(a: string, b: string): [string, string] {
 
 /* ──────────────────────── 1. АЛЬЯНСЫ ────────────────────────── */
 
+/**
+ * Создает новый альянс, сохраняя его флаг как файл.
+ * @param creatorStateUuid - UUID государства-создателя.
+ * @param creatorPlayerUuid - UUID игрока-создателя.
+ * @param name - Название альянса.
+ * @param description - Описание альянса.
+ * @param purpose - Цель альянса.
+ * @param colorHex - Цвет альянса в HEX формате.
+ * @param flag - Буфер с данными изображения флага.
+ * @returns {Promise<string>} - UUID созданного альянса.
+ */
 export async function createAlliance(
     creatorStateUuid: string,
     creatorPlayerUuid: string,
@@ -74,57 +108,58 @@ export async function createAlliance(
     description: string,
     purpose: AlliencePurpose,
     colorHex: string,
-    flagLink: string,
+    flag: Buffer, // Изменено с flagLink: string на flag: Buffer
 ): Promise<string> {
+    // 1. Проверка прав пользователя
     if (!await isRoleHigherOrEqual(creatorStateUuid, creatorPlayerUuid, RolesInState.VICE_RULER)) {
         throw createError({
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право создавать альянсы' },
-        })
+        });
     }
-    await getStateByUuid(creatorStateUuid)
-    await assertAllianceName(name)
-    assertHexColor(colorHex)
 
-    const allianceUuid = uuidv4()
-    const now = Date.now()
+    // 2. Валидация входных данных
+    await getStateByUuid(creatorStateUuid);
+    await assertAllianceName(name);
+    assertHexColor(colorHex);
 
+    // 3. Сохранение флага и получение ссылки
+    const flagLink = await flagToUploads(flag);
+
+    const allianceUuid = uuidv4();
+    const now = Date.now();
+
+    // 4. Запись данных альянса в базу данных
     const sqlAlliance = db().prepare(`
         INSERT INTO alliances (
             uuid, created, updated,
             name, description, purpose,
             color_hex, creator_state_uuid, flag_link, status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
+    `);
     const resAlliance = await sqlAlliance.run(
-        allianceUuid,
-        now,
-        now,
-        name,
-        description,
-        purpose,
-        colorHex,
-        creatorStateUuid,
-        flagLink,
-        AllianceStatus.ACTIVE,
-    )
+        allianceUuid, now, now, name, description, purpose,
+        colorHex, creatorStateUuid, flagLink, AllianceStatus.ACTIVE,
+    );
     if (!resAlliance.success) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to create alliance',
             data: { statusMessageRu: 'Не удалось создать альянс' },
-        })
+        });
     }
 
+    // 5. Добавление государства-создателя в члены альянса
     const sqlMember = db().prepare(`
         INSERT INTO alliance_members (
             uuid, created, updated,
             alliance_uuid, state_uuid, is_pending
         ) VALUES (?, ?, ?, ?, ?, 0)
-    `)
-    await sqlMember.run(uuidv4(), now, now, allianceUuid, creatorStateUuid)
+    `);
+    await sqlMember.run(uuidv4(), now, now, allianceUuid, creatorStateUuid);
 
+    // 6. Создание события в истории
     const hist: IHistoryEvent = {
         uuid: uuidv4(),
         created: now,
@@ -139,16 +174,43 @@ export async function createAlliance(
         city_uuids: null,
         details_json: null,
         created_by_uuid: creatorPlayerUuid,
-
         season: null,
         is_deleted: false,
         deleted_at: null,
         deleted_by_uuid: null,
-    }
-    await addHistoryEvent(hist)
+    };
+    await addHistoryEvent(hist);
 
-    return allianceUuid
+    return allianceUuid;
 }
+
+/**
+ * Вспомогательная функция для преобразования flag_link.
+ * Добавляет префикс /distant-api/ к локальным ссылкам.
+ * @param flagLink - Ссылка на флаг.
+ * @returns {string | null} Преобразованная ссылка на флаг или null.
+ */
+function transformFlagLink(flagLink: string | null): string | null {
+    if (!flagLink) {
+        return null;
+    }
+    // Не изменяем абсолютные URL-адреса
+    if (flagLink.startsWith('http://') || flagLink.startsWith('https://')) {
+        return flagLink;
+    }
+
+    const prefix = "/distant-api";
+
+    // Если ссылка уже начинается со слеша (например, /defaults/flag.png)
+    if (flagLink.startsWith('/')) {
+        return prefix + flagLink; // результат: /distant-api/defaults/flag.png
+    } else {
+        // Для относительных путей (например, flags/hash.png)
+        return prefix + '/' + flagLink; // результат: /distant-api/flags/hash.png
+    }
+}
+
+
 
 export async function requestAllianceJoin(
     allianceUuid: string,
@@ -405,6 +467,9 @@ export async function getAllianceByUuid(uuid: string): Promise<IAlliance> {
             data: { statusMessageRu: 'Альянс не найден' },
         })
     }
+
+    row.flag_link = transformFlagLink(row.flag_link)
+
     return row
 }
 
@@ -606,7 +671,16 @@ export async function reviewRelationChange(
 
     if (approve) {
         // Применяем изменение в state_relations
+        await db()
+            .prepare(`
+                DELETE FROM state_relation_requests
+                WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+            `)
+            .run(state_a_uuid, state_b_uuid, RelationRequestStatus.APPROVED);
+
         await _applyRelation(state_a_uuid, state_b_uuid, requested_kind)
+
+
 
         await db()
             .prepare(`
@@ -616,11 +690,25 @@ export async function reviewRelationChange(
       `)
             .run(RelationRequestStatus.APPROVED, now, requestUuid)
 
-        // Логируем в историю: либо «подписан договор», либо «расторгнут»
+        const [state_a, state_b] = await Promise.all([
+            getStateByUuid(state_a_uuid),
+            getStateByUuid(state_b_uuid),
+        ])
+
+
+        const relationText = (kind: RelationKind | null) => {
+            if (kind === null) return 'Нейтралитет (разрыв)';
+            return {
+                [RelationKind.NEUTRAL]: 'Нейтралитет',
+                [RelationKind.ALLY]: 'Дружба',
+                [RelationKind.ENEMY]: 'Вражда',
+            }[kind];
+        };
+
         const description =
             requested_kind === null
                 ? 'Отношения расторгнуты'
-                : `Государства установили статус «${requested_kind}».`
+                : `Государства ${state_a.name} и ${state_b.name} установили статус двусторонних отношений «${relationText(requested_kind)}».`
 
         const hist: IHistoryEvent = {
             uuid: uuidv4(),
@@ -645,6 +733,13 @@ export async function reviewRelationChange(
 
         await addHistoryEvent(hist)
     } else {
+        await db()
+            .prepare(`
+                DELETE FROM state_relation_requests
+                WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+            `)
+            .run(state_a_uuid, state_b_uuid, RelationRequestStatus.DECLINED);
+
         await db()
             .prepare('UPDATE state_relation_requests SET status = ?, updated = ? WHERE uuid = ?')
             .run(RelationRequestStatus.DECLINED, now, requestUuid)

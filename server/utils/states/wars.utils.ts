@@ -6,7 +6,7 @@ import {
     IWarBattle,
     WarSideRole,
     WarStatus
-} from '~/interfaces/state/diplomacy.types'
+} from '../../../../HeliCraftFrontNuxtVesper/types/diplomacy.types'
 import { RolesInState } from '~/interfaces/state/state.types'
 import { IHistoryEvent, HistoryEventType } from '~/interfaces/state/history.types'
 import { getStateByUuid } from '~/utils/states/state.utils'

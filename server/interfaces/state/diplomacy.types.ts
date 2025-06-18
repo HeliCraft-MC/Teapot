@@ -52,7 +52,9 @@ export interface IAllianceMember extends IBaseEntity {
     alliance_uuid: string;
     state_uuid: string;
     is_pending: boolean;
+    allowed_to_manage: boolean; //todo !!!!
 }
+
 
 /* ────────────────────────────────────────────────────────────── */
 /*  Двусторонние отношения                                       */

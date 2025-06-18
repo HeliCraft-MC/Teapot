@@ -53,8 +53,11 @@ function normalizeUuid(raw: string): string {
  * @throws 404 – если пользователь с указанным ником не найден
  * @throws 400 – если входная строка пуста или содержит недопустимые символы
  */
-export async function resolveUuid(id: string): Promise<string> {
+export async function resolveUuid(id: string, normalize? :boolean): Promise<string> {
   const candidate = id.trim()
+  if (normalize == undefined) {
+    normalize = true
+  }
 
   if (!candidate) {
     throw createError({
@@ -65,11 +68,19 @@ export async function resolveUuid(id: string): Promise<string> {
   }
 
   if (strictUuidRe.test(candidate)) {
-    return normalizeUuid(candidate)
+    if (normalize == true) {
+      return normalizeUuid(candidate)
+    } else {
+        return candidate
+    }
   }
 
   const user = await getUserByNickname(candidate)
-  return normalizeUuid(user.UUID)
+  if (normalize){
+    return normalizeUuid(user.UUID)
+  } else {
+    return user.UUID
+  }
 }
 
 /** Возвращает только «безопасные» поля пользователя */

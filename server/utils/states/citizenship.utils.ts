@@ -149,20 +149,33 @@ export async function isPlayerRulerSomewhere(playerUuid: string): Promise<boolea
 
 export async function isDiplomaticActionsAllowedForPlayer(playerUuid: string) {
     const db = useDatabase('states');
-    const req = db.prepare(
-        'SELECT state_uuid FROM state_members WHERE player_uuid = ? AND role IN (?, ?, ?, ?)'
-    );
-    const rows = await req.all(
-        playerUuid,
+    const allowedRoles = [
         RolesInState.DIPLOMAT,
         RolesInState.MINISTER,
         RolesInState.VICE_RULER,
         RolesInState.RULER
-    ) as { state_uuid: string }[];
-    return rows.map(row => ({
-        stateUuid: row.state_uuid,
-                isDiplomaticActionsAllowed: true
-    }));
+    ];
+
+    if (allowedRoles.length === 0) {
+        return [];
+    }
+
+    const placeholders = allowedRoles.map(() => '?').join(',');
+    // Добавил поле role в выборку для более информативного дебага
+    const sqlQuery = `SELECT state_uuid, role FROM state_members WHERE player_uuid = ? AND role IN (${placeholders})`;
+    const params = [playerUuid, ...allowedRoles];
+
+    try {
+        const req = db.prepare(sqlQuery);
+        const rows = await req.all(...params) as { state_uuid: string, role: string }[];
+
+        return rows.map(row => ({
+            stateUuid: row.state_uuid,
+            isDiplomaticActionsAllowed: true
+        }));
+    } catch (error) {
+        throw error;
+    }
 }
 
 export async function isPlayerInAnyState(playerUuid: string): Promise<boolean> {
