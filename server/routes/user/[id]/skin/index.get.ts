@@ -29,12 +29,23 @@ export default defineEventHandler(async (event) => {
     const uuid = await resolveUuid(id)
 
     const meta = getSkin(uuid)
-    if (!meta) {
-        throw createError({ statusCode: 404, statusMessage: 'Skin not found' })
+    const { uploadDir = './uploads' } = useRuntimeConfig()
+    let buf: Buffer
+    let mime: string
+
+    if (meta) {
+        try {
+            buf = await fsp.readFile(join(uploadDir, meta.path))
+            mime = meta.mime
+        } catch (err: any) {
+            if (err.code !== 'ENOENT') throw err
+        }
     }
 
-    const { uploadDir = './uploads' } = useRuntimeConfig()
-    const buf = await fsp.readFile(join(uploadDir, meta.path))
+    if (!buf) {
+        buf = await fsp.readFile('defaultSkin.png')
+        mime = 'image/png'
+    }
 
-    return send(event, buf, meta.mime)
+    return send(event, buf, mime)
 })

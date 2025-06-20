@@ -33,7 +33,17 @@ export default defineEventHandler(async (event) => {
     if (!meta) throw createError({ statusCode: 404, statusMessage: 'Skin not found' })
 
     const { uploadDir = './uploads' } = useRuntimeConfig()
-    const skinBuf = await fsp.readFile(join(uploadDir, meta.path))
+    let skinBuf
+    try {
+        skinBuf = await fsp.readFile(join(uploadDir, meta.path))
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            skinBuf = await fsp.readFile('defaultSkin.png')
+        } else {
+            throw err
+        }
+    }
+
     const headBuf = await extractHead(skinBuf)
     return send(event, headBuf, 'image/png')
 })
