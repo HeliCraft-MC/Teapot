@@ -500,9 +500,13 @@ export async function listAlliances(
     startAt = 0,
     limit = 100
 ): Promise<IAlliance[]> {
-    return (await db()
+    const rows = await db()
         .prepare('SELECT * FROM alliances WHERE status = ? ORDER BY created DESC LIMIT ? OFFSET ?')
-        .all(AllianceStatus.ACTIVE, limit, startAt)) as IAlliance[]
+        .all(AllianceStatus.ACTIVE, limit, startAt) as IAlliance[];
+    rows.forEach(row => {
+        row.flag_link = transformFlagLink(row.flag_link);
+    });
+    return rows;
 }
 
 /* ───────────────── 2. ДВУСТОРОННИЕ ОТНОШЕНИЯ ────────────────── */

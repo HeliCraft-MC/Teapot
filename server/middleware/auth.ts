@@ -24,6 +24,10 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/order\/list(?:\?.*)?$/, methods: ['GET'] },
     { pattern: /^\/warrant\/list(?:\?.*)?$/, methods: ['GET'] },
     { pattern: /^\/history\/list(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/state\/[^/]+\/members-count$/, methods: ['GET'] },
+    { pattern: /^\/alliances\/list(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/alliances\/[^/]+\/members(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/alliances\/[0-9a-fA-F-]+$/, methods: ['GET'] },
 ]
 
 export default defineEventHandler(async (event) => {

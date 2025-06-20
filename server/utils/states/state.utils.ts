@@ -643,7 +643,7 @@ export async function reanonceState(stateUuid: string, playerUuid: string): Prom
     }
 
     const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
-    const req = await sql.run(StateStatus.DISSOLVED, Date.now(), stateUuid)
+    const req = await sql.run(StateStatus.ACTIVE, Date.now(), stateUuid)
 
     if (!req.success) {
         throw createError({
