@@ -41,8 +41,11 @@ export default defineNitroConfig({
                 user:     process.env.STATES_MYSQL_USER || 'ms0urVpn',
                 password: process.env.STATES_MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
                 database: process.env.STATES_MYSQL_DATABASE || 'states',
+                pool: true,
+                waitForConnections: true,
+                connectionLimit: 5,
                 enableKeepAlive: true,
-                keepAliveInitialDelay: 10005,
+                keepAliveInitialDelay: 0,
             }
         }
     },
