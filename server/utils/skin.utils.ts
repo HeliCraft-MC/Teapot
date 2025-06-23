@@ -17,73 +17,72 @@ export function getSkin(uuid: string): SkinMeta | undefined {
 }
 
 /**
- * Сохранить новый скин:
- * 1) Удалить все старые файлы скина из диска
- *    вместе с их пустыми директориями вверх по дереву;
- * 2) Удалить старую запись из БД;
- * 3) Записать новый файл;
- * 4) Вставить новую запись в БД.
+ * Рекурсивно удаляет пустые директории внутри заданного корня
+ */
+async function removeEmptyDirs(root: string): Promise<void> {
+    const entries = await fsp.readdir(root, { withFileTypes: true })
+    for (const entry of entries) {
+        const fullPath = join(root, entry.name)
+        if (entry.isDirectory()) {
+            await removeEmptyDirs(fullPath)
+            const rem = await fsp.readdir(fullPath)
+            if (rem.length === 0) {
+                await fsp.rmdir(fullPath)
+            }
+        }
+    }
+}
+
+/**
+ * Сохраняет новый скин:
+ * 1) Удаляет старые файлы через fs.rm
+ * 2) Очищает пустые директории
+ * 3) Записывает новый файл
+ * 4) Добавляет запись в БД
  */
 export async function saveSkin(
     uuid: string,
     data: Buffer,
     mime = 'image/png'
-): Promise<SkinMeta> {
+): Promise<{ uuid: string; path: string; mime: string; size: number; created: number }> {
     const { uploadDir = './uploads' } = useRuntimeConfig()
     const db = useSkinSQLite()
+    const skinsRoot = join(uploadDir, 'skins')
 
-    // ——— 1) Удаляем старые файлы и их пустые папки
-    const oldRows = db
-        .prepare('SELECT path FROM skins WHERE uuid = ?')
-        .all([uuid]) as { path: string }[]
+    // Выбираем старые пути и удаляем их из БД
+    const oldRows = db.prepare('SELECT path FROM skins WHERE uuid = ?').all(uuid) as { path: string }[]
+    db.prepare('DELETE FROM skins WHERE uuid = ?').run(uuid)
 
-    for (const { path } of oldRows) {
-        const oldAbs = join(uploadDir, path)
-        await fsp.unlink(oldAbs).catch(() => {
-            // файл мог уже быть удалён — игнорируем ошибку
-        })
+    // Удаляем старые файлы
+    await Promise.all(
+        oldRows.map(({ path }) =>
+            fsp.rm(join(uploadDir, path), { force: true }).catch(() => {})
+        )
+    )
 
-        // Поднимаемся вверх по дереву, удаляя пустые директории
-        let dir = dirname(oldAbs)
-        const skinsRoot = join(uploadDir, 'skins')
-        while (dir.startsWith(skinsRoot)) {
-            const items = await fsp.readdir(dir)
-            if (items.length === 0) {
-                await fsp.rmdir(dir).catch(() => {
-                    // если не получилось удалить (ENOTEMPTY или др.) — выходим
-                })
-                dir = dirname(dir)
-            } else {
-                break
-            }
-        }
-    }
-
-    // ——— 2) Удаляем запись из БД
-    db.prepare('DELETE FROM skins WHERE uuid = ?').run([uuid])
-
-    // ——— 3) Сохраняем новый файл
+    // Генерируем путь для нового файла
     const hex = uuidv4().replace(/-/g, '')
-    const rel = `skins/${hex.slice(0, 2)}/${hex.slice(2, 4)}/${hex.slice(4, 6)}/${hex}.png`
-    const abs = join(uploadDir, rel)
+    const relPath = `skins/${hex.slice(0, 2)}/${hex.slice(2, 4)}/${hex.slice(4, 6)}/${hex}.png`
+    const absPath = join(uploadDir, relPath)
 
-    await fsp.mkdir(dirname(abs), { recursive: true })
-    await fsp.writeFile(abs, data)
+    // Создаём директории и пишем файл
+    await fsp.mkdir(dirname(absPath), { recursive: true })
+    await fsp.writeFile(absPath, data)
 
-    // ——— 4) Вставляем новую запись в БД
+    // Вставляем новую запись в БД
     db.prepare(
-        `
-    INSERT INTO skins(uuid, path, mime, size)
-    VALUES(?, ?, ?, ?)
-    `
-    ).run([uuid, rel, mime, data.length])
+        'INSERT INTO skins(uuid, path, mime, size) VALUES(?, ?, ?, ?)'
+    ).run(uuid, relPath, mime, data.length)
+
+    // Очищаем пустые директории
+    await removeEmptyDirs(skinsRoot)
 
     return {
         uuid,
-        path: rel,
+        path: relPath,
         mime,
         size: data.length,
-        created: Date.now() / 1e3,
+        created: Math.floor(Date.now() / 1000)
     }
 }
 

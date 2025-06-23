@@ -1,22 +1,26 @@
-// server/middleware/cors.ts
-import { defineEventHandler, setHeader } from 'h3'
-
 export default defineEventHandler((event) => {
-    const origin = event.node.req.headers.origin || '*'
+    // Запрашивающий источник
+    const origin = getHeader(event, 'origin') || '*'
 
-    // общие CORS-заголовки
+    // Базовые CORS-заголовки
     setHeader(event, 'Access-Control-Allow-Origin', origin)
-    setHeader(event, 'Vary', 'Origin')
+    setHeader(event, 'Vary', 'Origin')                 // чтобы кеш был корректным
     setHeader(event, 'Access-Control-Allow-Credentials', 'true')
-    setHeader(event, 'Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS')
-    setHeader(event, 'Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    setHeader(
+        event,
+        'Access-Control-Allow-Methods',
+        'GET,POST,PUT,PATCH,DELETE,OPTIONS'
+    )
+    setHeader(
+        event,
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, X-Requested-With'
+    )
 
-    // preflight
-    if (event.node.req.method === 'OPTIONS') {
-        event.node.res.writeHead(204, 'No Content')
+    // Preflight быстро завершаем с 204
+    if (event.method === 'OPTIONS') {
+        event.node.res.statusCode = 204
+        event.node.res.statusMessage = 'No Content'
         return 'ok'
     }
-
-
-
 })

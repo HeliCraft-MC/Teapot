@@ -95,6 +95,82 @@ async function flagToUploads(flag: Buffer): Promise<string> {
     return rel
 }
 
+/**
+ * Рекурсивно удаляет пустые директории внутри заданного корня
+ */
+async function removeEmptyDirs(root: string): Promise<void> {
+    let entries: string[]
+    try {
+        entries = await fsp.readdir(root)
+    } catch {
+        return
+    }
+    for (const name of entries) {
+        const fullPath = join(root, name)
+        const stat = await fsp.stat(fullPath)
+        if (stat.isDirectory()) {
+            await removeEmptyDirs(fullPath)
+            const rem = await fsp.readdir(fullPath)
+            if (rem.length === 0) {
+                await fsp.rmdir(fullPath)
+            }
+        }
+    }
+}
+
+/**
+ * Обновляет флаг существующего государства:
+ * – удаляет старый локальный файл,
+ * – загружает новый,
+ * – сохраняет в БД и чистит пустые папки.
+ */
+export async function updateStateFlag(stateUuid: string, flag: Buffer | string): Promise<string> {
+    // Проверяем, что штат существует
+    await getStateByUuid(stateUuid)
+
+    const { uploadDir = './uploads' } = useRuntimeConfig()
+    const flagsRoot = join(uploadDir, 'flags')
+
+    // Удаляем старый файл флага, если он локальный
+    const old = await db().prepare('SELECT flag_link FROM states WHERE uuid=?').get(stateUuid) as { flag_link: string | null }
+    if (old.flag_link && !old.flag_link.startsWith('http')) {
+        await fsp.rm(join(uploadDir, old.flag_link), { force: true })
+        await removeEmptyDirs(flagsRoot)
+    }
+
+    // Загружаем новый флаг
+    let newLink: string
+    if (Buffer.isBuffer(flag)) {
+        newLink = await flagToUploads(flag)
+    } else {
+        const isLocal = flag.startsWith('/')
+        const isRemote = flag.startsWith('http://') || flag.startsWith('https://')
+        if ((!isLocal && !isRemote) || !flag.endsWith('.png')) {
+            throw createError({
+                statusCode: 422,
+                statusMessage: 'Invalid flag link',
+                data: { statusMessageRu: 'Неверная ссылка на флаг' }
+            })
+        }
+        newLink = flag
+    }
+
+    // Обновляем запись в БД
+    const res = await db().prepare('UPDATE states SET flag_link=?, updated=? WHERE uuid=?')
+        .run(newLink, Date.now(), stateUuid)
+    if (!res.success) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to update flag',
+            data: { statusMessageRu: 'Не удалось обновить флаг' }
+        })
+    }
+
+    return newLink
+}
+
+
+
 export async function getStateByName(name: string): Promise<IState | null> {
     const sql = db().prepare('SELECT * FROM states WHERE LOWER(name) = ?')
     const state = await sql.get(name.toLowerCase()) as IState | undefined
@@ -538,41 +614,27 @@ export async function deleteState(stateUuid: string, adminUuid: string): Promise
             data: { statusMessageRu: 'Недостаточно прав' }
         })
     }
-    try {
-        await getStateByUuid(stateUuid)
-    } catch (e) {
-        throw e;
+    const state = await getStateByUuid(stateUuid)
+    if (state.flag_link && !state.flag_link.startsWith('http')) {
+        const { uploadDir = './uploads' } = useRuntimeConfig()
+        const flagsRoot = join(uploadDir, 'flags')
+        await fsp.rm(join(uploadDir, state.flag_link), { force: true })  // игнорировать отсутствие файла :contentReference[oaicite:3]{index=3}
+        await removeEmptyDirs(flagsRoot)
+    }
+    const del1 = await db().prepare('DELETE FROM states WHERE uuid=?').run(stateUuid)
+    if (!del1.success) {
+        throw createError({ statusCode: 500, statusMessage: 'Failed to delete state', data: { statusMessageRu: 'Не удалось удалить государство' } })
     }
 
-    {
-        const sql = db().prepare('DELETE FROM states WHERE uuid = ?')
-        const req = await sql.run(stateUuid)
-
-        if (!req.success) {
-            throw createError({
-                statusCode: 500,
-                statusMessage: 'Failed to delete state',
-                data: {statusMessageRu: 'Не удалось удалить государство'}
-            })
-        }
-    }
 
     // remove all events from history where stateUuid is only one in state_uuids
-    {
-        const sql = db().prepare(`
-      DELETE FROM history_events
-      WHERE JSON_LENGTH(state_uuids) = 1
-        AND JSON_UNQUOTE(JSON_EXTRACT(state_uuids, '$[0]')) = ?
-    `)
-        const req = await sql.run(stateUuid)
-
-        if (!req.success) {
-            throw createError({
-                statusCode: 500,
-                statusMessage: 'Failed to delete state',
-                data: {statusMessageRu: 'Не удалось удалить государство'}
-            })
-        }
+    const del2 = await db().prepare(`
+    DELETE FROM history_events
+    WHERE JSON_LENGTH(state_uuids)=1
+      AND JSON_UNQUOTE(JSON_EXTRACT(state_uuids,'$[0]'))=?
+  `).run(stateUuid)
+    if (!del2.success) {
+        throw createError({ statusCode: 500, statusMessage: 'Failed to delete history events', data: { statusMessageRu: 'Не удалось удалить события истории' } })
     }
 
     return
