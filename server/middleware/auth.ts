@@ -9,7 +9,7 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/auth\/login(?:\?.*)?$/ },
     { pattern: /^\/auth\/refresh$/ },
     { pattern: /^\/auth\/logout$/ },
-    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?(?:\.png)?$/, methods: ['GET'] },
+    { pattern: /^\/user\/[^/]+\/skin(?:\/head)?(?:\.png)?$/, methods: ['GET', 'HEAD'] },
     { pattern: /^\/user\/[^/]$/, methods: ['GET'] }, // /user/UUID
     { pattern: /^\/$/ },
     { pattern: /^\/_scalar$/ },
