@@ -48,5 +48,7 @@ export default defineEventHandler(async (event) => {
     event.node.res.setHeader('Cache-Control', 'no-store, must-revalidate');
 
 
+
+
     return send(event, buf, mime)
 })
