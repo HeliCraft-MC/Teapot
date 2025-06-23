@@ -50,5 +50,5 @@ export default defineEventHandler(async (event) => {
 
 
 
-    return send(event, buf, mime)
+    return ''
 })
