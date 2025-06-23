@@ -17,10 +17,6 @@ export default defineEventHandler((event) => {
         return 'ok'
     }
 
-    // преобразуем HEAD → GET, чтобы основной handler отработал как GET
-    if (event.node.req.method === 'HEAD') {
-        // запомним, что изначально был HEAD
-        (event.context as any)._isHead = true
-        event.node.req.method = 'GET'
-    }
+
+
 })
