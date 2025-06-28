@@ -19,9 +19,6 @@ export function generateAccessToken(user: any) {
         NICKNAME: user.NICKNAME,
         LOWERCASENICKNAME: user.LOWERCASENICKNAME,
         REGDATE: user.REGDATE,
-        ISSUEDTIME: user.ISSUEDTIME,
-        serverID: user.serverID,
-        hwidId: user.hwidId
     }, jwtSecret, { expiresIn: '1h' });
 }
 
@@ -44,9 +41,6 @@ export function generateRefreshToken(user: any) {
         NICKNAME: user.NICKNAME,
         LOWERCASENICKNAME: user.LOWERCASENICKNAME,
         REGDATE: user.REGDATE,
-        ISSUEDTIME: user.ISSUEDTIME,
-        serverID: user.serverID,
-        hwidId: user.hwidId
     }, jwtSecret, { expiresIn: '7d' });
 }
 
