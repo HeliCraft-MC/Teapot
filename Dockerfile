@@ -25,9 +25,9 @@ RUN npm install
 COPY . .
 
 # Аргумент сборки для передачи хеша коммита.
-# Пример запуска: docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -t my-app .
+# Пример запуска: docker build --build-arg NODE_COMMIT=$(git rev-parse HEAD) -t my-app .
 ARG NODE_COMMIT=unknown
-ENV NODE_COMMIT=${GIT_COMMIT}
+ENV NODE_COMMIT=${NODE_COMMIT}
 
 # Запускаем скрипт сборки. Nitro создаст папку .output/
 RUN npm run build
