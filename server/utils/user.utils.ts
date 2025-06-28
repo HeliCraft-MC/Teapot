@@ -134,19 +134,27 @@ export async function getUserByNickname(nickname: string): Promise<AuthUser> {
   // const stmt = db.prepare('SELECT * FROM AUTH WHERE LOWERCASENICKNAME = ?')
   // const user = await stmt.get(normalizeNickname(nickname)) as AuthUser | undefined
 
-  const sql = 'SELECT * FROM `AUTH` WHERE `LOWERCASENICKNAME` = ?';
-  const [rows] = await pool.execute<RowDataPacket[]>(sql, [normalizeNickname(nickname)]);
-  const user = rows[0] as AuthUser | undefined;
+  try{
+    const sql = 'SELECT * FROM `AUTH` WHERE `LOWERCASENICKNAME` = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [normalizeNickname(nickname)]);
+    const user = rows[0] as AuthUser | undefined;
+    if (!user) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'User not found',
+        data: { statusMessageRu: 'Пользователь не найден' }
+      });
+    }
 
-  if (!user) {
+    return user;
+  } catch (e) {
     throw createError({
-      statusCode: 404,
-      statusMessage: 'User not found',
-      data: { statusMessageRu: 'Пользователь не найден' }
+      statusCode: 520,
+      statusMessage: 'Database error',
+      data: { statusMessageRu: 'Ошибка базы данных' }
     });
   }
 
-  return user;
 }
 
 
