@@ -1,5 +1,7 @@
 import bcrypt from 'bcrypt'
 import { AuthUser } from '~/interfaces/mysql.types'
+import {useMySQL} from "~/plugins/mySql";
+import {RowDataPacket} from "mysql2";
 
 
 /**
@@ -12,9 +14,16 @@ import { AuthUser } from '~/interfaces/mysql.types'
  * @throws {Error} Throws an error if the user is not found or the password is incorrect.
  */
 export async function loginUser(nickname: string, password: string) {
-    const db = useDatabase()
-    const req = db.prepare('SELECT * FROM AUTH WHERE LOWERCASENICKNAME = ?')
-    const user = await req.get(nickname.toLowerCase()) as AuthUser
+    const pool = useMySQL('default');
+
+    // DEPRECATED, keeping this for info
+    // const db = useDatabase()
+    // const req = db.prepare('SELECT * FROM AUTH WHERE LOWERCASENICKNAME = ?')
+    // const user = await req.get(nickname.toLowerCase()) as AuthUser
+
+    const sql = 'SELECT * FROM `AUTH` WHERE `LOWERCASENICKNAME` = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [nickname.toLowerCase()]);
+    const user = rows[0] as AuthUser | undefined;
 
     if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({
@@ -23,7 +32,7 @@ export async function loginUser(nickname: string, password: string) {
             data: {
                 statusMessageRu: 'Пользователь не найден',
             }
-        })
+        });
     }
 
     if (!(await bcrypt.compare(password, user.HASH))) {
@@ -33,13 +42,14 @@ export async function loginUser(nickname: string, password: string) {
             data: {
                 statusMessageRu: 'Неверный пароль',
             }
-        })
+        });
     }
 
-    const tokens = generateTokens(user)
+    const tokens = generateTokens(user);
 
-    return { tokens, uuid: user.UUID, nickname: user.NICKNAME }
+    return { tokens, uuid: user.UUID, nickname: user.NICKNAME };
 }
+
 
 /**
  * Refreshes the user data by validating the provided refresh token and regenerating tokens if valid.
@@ -50,9 +60,16 @@ export async function loginUser(nickname: string, password: string) {
  * @throws {Error} Throws an error if the user is not found or if the refresh token is invalid.
  */
 export async function refreshUser(uuid: string, refreshToken: string) {
-    const db = useDatabase()
-    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ? OR UUID_WR = ?')
-    const user = await req.get(uuid, uuid) as AuthUser
+    const pool = useMySQL('default');
+
+    // DEPRECATED, keeping this for info
+    // const db = useDatabase()
+    // const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ? OR UUID_WR = ?')
+    // const user = await req.get(uuid, uuid) as AuthUser
+
+    const sql = 'SELECT * FROM `AUTH` WHERE `UUID` = ? OR `UUID_WR` = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [uuid, uuid]);
+    const user = rows[0] as AuthUser | undefined;
 
     if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({
@@ -61,11 +78,12 @@ export async function refreshUser(uuid: string, refreshToken: string) {
             data: {
                 statusMessageRu: 'Пользователь не найден',
             }
-        })
+        });
     }
-    if(verifyTokenWithCredentials(refreshToken, user)) {
-        const tokens = generateTokens(user)
-        return { tokens, uuid: user.UUID, nickname: user.NICKNAME }
+
+    if (verifyTokenWithCredentials(refreshToken, user)) {
+        const tokens = generateTokens(user);
+        return { tokens, uuid: user.UUID, nickname: user.NICKNAME };
     } else {
         throw createError({
             statusCode: 401,
@@ -73,14 +91,21 @@ export async function refreshUser(uuid: string, refreshToken: string) {
             data: {
                 statusMessageRu: 'Неверный токен обновления',
             }
-        })
+        });
     }
 }
 
 export async function checkAuth(uuid: string, accessToken: string) {
-    const db = useDatabase()
-    const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ? OR UUID_WR = ?')
-    const user = await req.get(uuid, uuid) as AuthUser
+    const pool = useMySQL('default');
+
+    // DEPRECATED, keeping this for info
+    // const db = useDatabase()
+    // const req = db.prepare('SELECT * FROM AUTH WHERE UUID = ? OR UUID_WR = ?')
+    // const user = await req.get(uuid, uuid) as AuthUser
+
+    const sql = 'SELECT * FROM `AUTH` WHERE `UUID` = ? OR `UUID_WR` = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [uuid, uuid]);
+    const user = rows[0] as AuthUser | undefined;
 
     if (!user || !user.HASH || !user.NICKNAME || !user.UUID) {
         throw createError({
@@ -89,10 +114,11 @@ export async function checkAuth(uuid: string, accessToken: string) {
             data: {
                 statusMessageRu: 'Не авторизован',
             }
-        })
+        });
     }
-    if(verifyTokenWithCredentials(accessToken, user)) {
-        return true
+
+    if (verifyTokenWithCredentials(accessToken, user)) {
+        return true;
     } else {
         throw createError({
             statusCode: 401,
@@ -100,6 +126,6 @@ export async function checkAuth(uuid: string, accessToken: string) {
             data: {
                 statusMessageRu: 'Не авторизован',
             }
-        })
+        });
     }
 }

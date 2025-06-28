@@ -3,6 +3,8 @@ import {
     HistoryEventType,
     IHistoryEvent
 } from '~/interfaces/state/history.types'
+import {useMySQL} from "~/plugins/mySql";
+import {ResultSetHeader, RowDataPacket} from "mysql2";
 
 /* ──────────── вспомогательные типы ──────────── */
 
@@ -61,31 +63,6 @@ export type HistoryUpdate = Partial<
         | 'details_json'
     >
 >
-
-/* ──────────── кэш SQL ──────────── */
-
-const db = useDatabase('states')
-
-/** Подготовленные выражения, переиспользуются для скорости */
-const stmtCache = {
-    insert: db.prepare(`
-        INSERT INTO history_events (
-            uuid, created, updated,
-            type, title, description, season,
-            state_uuids, player_uuids, alliance_uuids,
-            war_uuid, city_uuids, details_json,
-            created_by_uuid, is_deleted
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-    `),
-    selectByUuid: db.prepare('SELECT * FROM history_events WHERE uuid = ?'),
-    markDeleted: db.prepare(`
-    UPDATE history_events
-    SET is_deleted = 1, updated = ?, deleted_at = ?, deleted_by_uuid = ?
-    WHERE uuid = ? AND is_deleted = 0
-  `),
-    countBase: db.prepare('SELECT COUNT(*) as count FROM history_events'),
-}
 
 /* ──────────── утилиты ──────────── */
 
@@ -148,7 +125,38 @@ export async function addHistoryEvent(
     const now  = Date.now();
     const uuid = uuidv4();
 
-    await stmtCache.insert.run(
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // await stmtCache.insert.run(
+    //     uuid,
+    //     now,
+    //     now,
+    //     data.type,
+    //     data.title,
+    //     data.description,
+    //     data.season ?? null,
+    //     data.state_uuids   ? JSON.stringify(data.state_uuids)   : null,
+    //     data.player_uuids  ? JSON.stringify(data.player_uuids)  : null,
+    //     data.alliance_uuids? JSON.stringify(data.alliance_uuids): null,
+    //     data.war_uuid      ?? null,
+    //     data.city_uuids    ? JSON.stringify(data.city_uuids)    : null,
+    //     data.details_json  ? JSON.stringify(data.details_json)  : null,
+    //     data.created_by_uuid
+    // );
+
+    const sql = `
+        INSERT INTO history_events (
+            uuid, created, updated,
+            type, title, description, season,
+            state_uuids, player_uuids, alliance_uuids,
+            war_uuid, city_uuids, details_json,
+            created_by_uuid, is_deleted
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `;
+
+    const values = [
         uuid,
         now,
         now,
@@ -163,25 +171,46 @@ export async function addHistoryEvent(
         data.city_uuids    ? JSON.stringify(data.city_uuids)    : null,
         data.details_json  ? JSON.stringify(data.details_json)  : null,
         data.created_by_uuid
-    );
+    ];
+
+    const [result] = await pool.execute<ResultSetHeader>(sql, values);
+
+    if (result.affectedRows === 0) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to insert history event',
+            data: { statusMessageRu: 'Не удалось добавить запись в историю' }
+        });
+    }
 
     return uuid;
 }
 
 
+
 /* ──────────── чтение ──────────── */
 
 export async function getHistoryEvent(uuid: string): Promise<IHistoryEvent> {
-    const row = stmtCache.selectByUuid.get(uuid) as any
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const row = stmtCache.selectByUuid.get(uuid) as any
+
+    const sql = 'SELECT * FROM `history_events` WHERE `uuid` = ? LIMIT 1';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [uuid]);
+    const row = rows[0];
+
     if (!row || row.is_deleted) {
         throw createError({
             statusCode: 404,
             statusMessage: 'History event not found',
             data: { statusMessageRu: 'Событие не найдено' },
-        })
+        });
     }
-    return mapRow(row)
+
+    return mapRow(row);
 }
+
 
 /**
  * Построение WHERE по фильтрам
@@ -259,17 +288,25 @@ export async function listHistoryEvents(
     limit = 100,
     order: 'asc' | 'desc' = 'desc'
 ): Promise<IHistoryEvent[]> {
-    const { where, params } = buildWhere(filters)
+    const pool = useMySQL('states');
+    const { where, params } = buildWhere(filters);
+
+    // DEPRECATED, keeping this for info
+    // const rows = await db.prepare(sql).all(...params, limit, startAt) as any[]
 
     const sql = `
-    SELECT * FROM history_events
-    ${where}
-    ORDER BY created ${order.toUpperCase()}
-    LIMIT ? OFFSET ?
-  `
-    const rows = await db.prepare(sql).all(...params, limit, startAt) as any[]
-    return rows.map(mapRow)
+        SELECT * FROM history_events
+        ${where}
+        ORDER BY created ${order.toUpperCase()}
+        LIMIT ? OFFSET ?
+    `;
+
+    const finalParams = [...params, limit, startAt];
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, finalParams);
+
+    return (rows as any[]).map(mapRow);
 }
+
 
 /**
  * Считает количество записей c тем же набором фильтров.
@@ -277,11 +314,19 @@ export async function listHistoryEvents(
 export async function countHistoryEvents(
     filters: HistoryFilters = {}
 ): Promise<number> {
-    const { where, params } = buildWhere(filters)
-    const row = await db
-        .prepare(`SELECT COUNT(*) as count FROM history_events ${where}`)
-        .get(...params) as { count: number }
-    return row.count
+    const pool = useMySQL('states');
+    const { where, params } = buildWhere(filters);
+
+    // DEPRECATED, keeping this for info
+    // const row = await db
+    //     .prepare(`SELECT COUNT(*) as count FROM history_events ${where}`)
+    //     .get(...params) as { count: number }
+
+    const sql = `SELECT COUNT(*) as count FROM history_events ${where}`;
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, params);
+    const row = rows[0] as { count: number };
+
+    return row.count;
 }
 
 /* ──────────── короткие алиасы (state / player / alliance …) ──────────── */
@@ -320,15 +365,17 @@ export async function updateHistoryEvent(
     patch: HistoryUpdate,
     updaterUuid: string
 ) {
-    if (!Object.keys(patch).length) return
+    if (!Object.keys(patch).length) return;
+
+    const pool = useMySQL('states');
 
     // формируем SET-часть динамически
-    const cols: string[] = []
-    const params: any[] = []
-    const now = Date.now()
+    const cols: string[] = [];
+    const params: any[] = [];
+    const now = Date.now();
 
     for (const [key, val] of Object.entries(patch)) {
-        if (val === undefined) continue
+        if (val === undefined) continue;
 
         if (
             [
@@ -339,21 +386,35 @@ export async function updateHistoryEvent(
                 'details_json',
             ].includes(key)
         ) {
-            cols.push(`${key} = ?`)
-            params.push(val ? JSON.stringify(val) : null)
+            cols.push(`${key} = ?`);
+            params.push(val ? JSON.stringify(val) : null);
         } else {
-            cols.push(`${key} = ?`)
-            params.push(val)
+            cols.push(`${key} = ?`);
+            params.push(val);
         }
     }
 
-    cols.push('updated = ?')
-    params.push(now)
+    cols.push('updated = ?');
+    params.push(now);
 
-    const sql = `UPDATE history_events SET ${cols.join(', ')} WHERE uuid = ? AND is_deleted = 0`
-    const res = db.prepare(sql).run(...params, uuid)
+    // DEPRECATED, keeping this for info
+    // const sql = `UPDATE history_events SET ${cols.join(', ')} WHERE uuid = ? AND is_deleted = 0`
+    // const res = db.prepare(sql).run(...params, uuid)
 
+    const sql = `UPDATE history_events SET ${cols.join(', ')} WHERE uuid = ? AND is_deleted = 0`;
+    params.push(uuid);
+
+    const [result] = await pool.execute<ResultSetHeader>(sql, params);
+
+    if (result.affectedRows === 0) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'History event not found or already deleted',
+            data: { statusMessageRu: 'Событие не найдено или уже удалено' },
+        });
+    }
 }
+
 
 /**
  * Мягкое удаление записи (скрыть из публичной ленты).
@@ -362,7 +423,26 @@ export async function softDeleteHistoryEvent(
     uuid: string,
     deletedByUuid: string
 ) {
-    const now = Date.now()
-    const res = stmtCache.markDeleted.run(now, now, deletedByUuid, uuid)
+    const pool = useMySQL('states');
+    const now = Date.now();
 
+    // DEPRECATED, keeping this for info
+    // const res = stmtCache.markDeleted.run(now, now, deletedByUuid, uuid)
+
+    const sql = `
+        UPDATE history_events
+        SET is_deleted = 1, updated = ?, deleted_at = ?, deleted_by_uuid = ?
+        WHERE uuid = ? AND is_deleted = 0
+    `;
+
+    const [result] = await pool.execute<ResultSetHeader>(sql, [now, now, deletedByUuid, uuid]);
+
+    if (result.affectedRows === 0) {
+        throw createError({
+            statusCode: 404,
+            statusMessage: 'History event not found or already deleted',
+            data: { statusMessageRu: 'Событие не найдено или уже удалено' },
+        });
+    }
 }
+
