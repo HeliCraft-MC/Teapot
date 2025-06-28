@@ -149,9 +149,9 @@ export async function getUserByNickname(nickname: string): Promise<AuthUser> {
     return user;
   } catch (e) {
     throw createError({
-      statusCode: 520,
+      statusCode: 500,
       statusMessage: 'Database error',
-      data: { statusMessageRu: 'Ошибка базы данных' }
+      data: { statusMessageRu: 'Ошибка базы данных', error: e.message }
     });
   }
 
