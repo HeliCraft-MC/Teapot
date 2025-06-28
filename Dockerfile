@@ -16,13 +16,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Копируем package.json и package-lock.json. Этот слой будет кэшироваться,
-# и `npm ci` запустится только если эти файлы изменятся.
 COPY package*.json ./
 
 # Устанавливаем все зависимости (включая dev) из package-lock.json.
-# `npm ci` быстрее и надежнее для сборок, чем `npm install`.
-RUN npm ci
+RUN npm install
 
 # Копируем все остальные файлы проекта в контейнер.
 COPY . .
