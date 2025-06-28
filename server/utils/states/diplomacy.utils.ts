@@ -1,8 +1,3 @@
-/* ──────────────────────────────────────────────────────────────
-   utils/states/diplomacy.utils.ts
-   Дипломатия: альянсы, двусторонние отношения (заявки на смену)
-   NB: Реализация войн вынесена в war.utils.ts
-   ────────────────────────────────────────────────────────────── */
 
 import {
     IAlliance,
@@ -26,9 +21,8 @@ import {dirname, join} from "pathe";
 import sharp from "sharp";
 
 import { promises as fsp } from 'node:fs'
-
-/** Быстрый доступ к БД «states» */
-const db = () => useDatabase('states')
+import {ResultSetHeader, RowDataPacket} from "mysql2";
+import {useMySQL} from "~/plugins/mySql";
 
 /* ─────────────────────────── helpers ────────────────────────── */
 
@@ -52,9 +46,18 @@ async function assertAllianceName(name: string) {
             data: { statusMessageRu: 'Недопустимое название альянса' },
         })
     }
-    const exists = await db()
-        .prepare('SELECT 1 FROM alliances WHERE LOWER(name) = ?')
-        .get(name.toLowerCase())
+
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const exists = await db()
+    //     .prepare('SELECT 1 FROM alliances WHERE LOWER(name) = ?')
+    //     .get(name.toLowerCase())
+
+    const sql = 'SELECT 1 FROM `alliances` WHERE LOWER(`name`) = ? LIMIT 1';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [name.toLowerCase()]);
+    const exists = rows.length > 0;
+
     if (exists) {
         throw createError({
             statusCode: 409,
@@ -63,6 +66,7 @@ async function assertAllianceName(name: string) {
         })
     }
 }
+
 
 /**
  * Загружает файл флага и возвращает относительный путь.
@@ -108,7 +112,7 @@ export async function createAlliance(
     description: string,
     purpose: AlliencePurpose,
     colorHex: string,
-    flag: Buffer, // Изменено с flagLink: string на flag: Buffer
+    flag: Buffer,
 ): Promise<string> {
     // 1. Проверка прав пользователя
     if (!await isRoleHigherOrEqual(creatorStateUuid, creatorPlayerUuid, RolesInState.VICE_RULER)) {
@@ -130,19 +134,35 @@ export async function createAlliance(
     const allianceUuid = uuidv4();
     const now = Date.now();
 
+    const pool = useMySQL('states');
+
     // 4. Запись данных альянса в базу данных
-    const sqlAlliance = db().prepare(`
+    // DEPRECATED, keeping this for info
+    // const sqlAlliance = db().prepare(`
+    //     INSERT INTO alliances (
+    //         uuid, created, updated,
+    //         name, description, purpose,
+    //         color_hex, creator_state_uuid, flag_link, status
+    //     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    // `);
+    // const resAlliance = await sqlAlliance.run(
+    //     allianceUuid, now, now, name, description, purpose,
+    //     colorHex, creatorStateUuid, flagLink, AllianceStatus.ACTIVE,
+    // );
+    const sqlAlliance = `
         INSERT INTO alliances (
             uuid, created, updated,
             name, description, purpose,
             color_hex, creator_state_uuid, flag_link, status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const resAlliance = await sqlAlliance.run(
+    `;
+    const valuesAlliance = [
         allianceUuid, now, now, name, description, purpose,
-        colorHex, creatorStateUuid, flagLink, AllianceStatus.ACTIVE,
-    );
-    if (!resAlliance.success) {
+        colorHex, creatorStateUuid, flagLink, AllianceStatus.ACTIVE
+    ];
+    const [resAlliance] = await pool.execute<ResultSetHeader>(sqlAlliance, valuesAlliance);
+
+    if (resAlliance.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to create alliance',
@@ -151,13 +171,22 @@ export async function createAlliance(
     }
 
     // 5. Добавление государства-создателя в члены альянса
-    const sqlMember = db().prepare(`
+    // DEPRECATED, keeping this for info
+    // const sqlMember = db().prepare(`
+    //     INSERT INTO alliance_members (
+    //         uuid, created, updated,
+    //         alliance_uuid, state_uuid, is_pending
+    //     ) VALUES (?, ?, ?, ?, ?, 0)
+    // `);
+    // await sqlMember.run(uuidv4(), now, now, allianceUuid, creatorStateUuid);
+    const sqlMember = `
         INSERT INTO alliance_members (
             uuid, created, updated,
             alliance_uuid, state_uuid, is_pending
         ) VALUES (?, ?, ?, ?, ?, 0)
-    `);
-    await sqlMember.run(uuidv4(), now, now, allianceUuid, creatorStateUuid);
+    `;
+    const valuesMember = [uuidv4(), now, now, allianceUuid, creatorStateUuid];
+    await pool.execute<ResultSetHeader>(sqlMember, valuesMember);
 
     // 6. Создание события в истории
     const hist: IHistoryEvent = {
@@ -183,6 +212,7 @@ export async function createAlliance(
 
     return allianceUuid;
 }
+
 
 /**
  * Вспомогательная функция для преобразования flag_link.
@@ -222,42 +252,64 @@ export async function requestAllianceJoin(
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право подавать заявки на вступление в альянсы' },
-        })
+        });
     }
 
-    await getStateByUuid(stateUuid)
-    const alliance = await db()
-        .prepare('SELECT * FROM alliances WHERE uuid = ? AND status = ?')
-        .get(allianceUuid, AllianceStatus.ACTIVE) as IAlliance | undefined
+    await getStateByUuid(stateUuid);
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const alliance = await db()
+    //     .prepare('SELECT * FROM alliances WHERE uuid = ? AND status = ?')
+    //     .get(allianceUuid, AllianceStatus.ACTIVE) as IAlliance | undefined;
+    const sqlAlliance = 'SELECT * FROM `alliances` WHERE `uuid` = ? AND `status` = ? LIMIT 1';
+    const [allianceRows] = await pool.execute<RowDataPacket[]>(sqlAlliance, [allianceUuid, AllianceStatus.ACTIVE]);
+    const alliance = allianceRows[0] as IAlliance | undefined;
 
     if (!alliance) {
         throw createError({
             statusCode: 404,
             statusMessage: 'Alliance not found or inactive',
             data: { statusMessageRu: 'Альянс не найден или распущен' },
-        })
+        });
     }
 
-    const exists = await db()
-        .prepare('SELECT 1 FROM alliance_members WHERE alliance_uuid = ? AND state_uuid = ?')
-        .get(allianceUuid, stateUuid)
+    // DEPRECATED, keeping this for info
+    // const exists = await db()
+    //     .prepare('SELECT 1 FROM alliance_members WHERE alliance_uuid = ? AND state_uuid = ?')
+    //     .get(allianceUuid, stateUuid);
+    const sqlExists = 'SELECT 1 FROM `alliance_members` WHERE `alliance_uuid` = ? AND `state_uuid` = ? LIMIT 1';
+    const [existsRows] = await pool.execute<RowDataPacket[]>(sqlExists, [allianceUuid, stateUuid]);
+    const exists = existsRows.length > 0;
+
     if (exists) {
         throw createError({
             statusCode: 400,
             statusMessage: 'Already in alliance or pending',
             data: { statusMessageRu: 'Уже в альянсе или заявка на рассмотрении' },
-        })
+        });
     }
 
-    await db()
-        .prepare(`
-            INSERT INTO alliance_members (
-                uuid, created, updated,
-                alliance_uuid, state_uuid, is_pending
-            ) VALUES (?, ?, ?, ?, ?, 1)
-        `)
-        .run(uuidv4(), Date.now(), Date.now(), allianceUuid, stateUuid)
+    // DEPRECATED, keeping this for info
+    // await db()
+    //     .prepare(`
+    //         INSERT INTO alliance_members (
+    //             uuid, created, updated,
+    //             alliance_uuid, state_uuid, is_pending
+    //         ) VALUES (?, ?, ?, ?, ?, 1)
+    //     `)
+    //     .run(uuidv4(), Date.now(), Date.now(), allianceUuid, stateUuid);
+    const sqlInsert = `
+        INSERT INTO alliance_members (
+            uuid, created, updated,
+            alliance_uuid, state_uuid, is_pending
+        ) VALUES (?, ?, ?, ?, ?, 1)
+    `;
+    const now = Date.now();
+    const values = [uuidv4(), now, now, allianceUuid, stateUuid];
+    await pool.execute<ResultSetHeader>(sqlInsert, values);
 }
+
 
 export async function reviewAllianceJoin(
     allianceUuid: string,
@@ -271,32 +323,47 @@ export async function reviewAllianceJoin(
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право рассматривать заявки на вступление в альянсы' },
-        })
+        });
     }
-    const row = await db()
-        .prepare(`
-            SELECT * FROM alliance_members
-            WHERE alliance_uuid = ? AND state_uuid = ? AND is_pending = 1
-        `)
-        .get(allianceUuid, applicantStateUuid) as IAllianceMember | undefined
+
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const row = await db()
+    //     .prepare(`
+    //         SELECT * FROM alliance_members
+    //         WHERE alliance_uuid = ? AND state_uuid = ? AND is_pending = 1
+    //     `)
+    //     .get(allianceUuid, applicantStateUuid) as IAllianceMember | undefined
+    const sqlSelect = `
+        SELECT * FROM alliance_members
+        WHERE alliance_uuid = ? AND state_uuid = ? AND is_pending = 1
+        LIMIT 1
+    `;
+    const [selectRows] = await pool.execute<RowDataPacket[]>(sqlSelect, [allianceUuid, applicantStateUuid]);
+    const row = selectRows[0] as IAllianceMember | undefined;
 
     if (!row) {
         throw createError({
             statusCode: 404,
             statusMessage: 'Application not found',
             data: { statusMessageRu: 'Заявка не найдена' },
-        })
+        });
     }
 
     if (approve) {
-        await db()
-            .prepare('UPDATE alliance_members SET is_pending = 0, updated = ? WHERE uuid = ?')
-            .run(Date.now(), row.uuid)
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare('UPDATE alliance_members SET is_pending = 0, updated = ? WHERE uuid = ?')
+        //     .run(Date.now(), row.uuid)
+        const now = Date.now();
+        const sqlUpdate = 'UPDATE alliance_members SET is_pending = 0, updated = ? WHERE uuid = ?';
+        await pool.execute<ResultSetHeader>(sqlUpdate, [now, row.uuid]);
 
         const hist: IHistoryEvent = {
             uuid: uuidv4(),
-            created: Date.now(),
-            updated: Date.now(),
+            created: now,
+            updated: now,
             type: HistoryEventType.ALLIANCE_MEMBER_JOINED,
             title: 'Новое государство в альянсе',
             description: `Государство присоединилось к альянсу.`,
@@ -312,15 +379,19 @@ export async function reviewAllianceJoin(
             is_deleted: false,
             deleted_at: null,
             deleted_by_uuid: null,
-        }
+        };
 
-        await addHistoryEvent(hist)
+        await addHistoryEvent(hist);
     } else {
-        await db()
-            .prepare('DELETE FROM alliance_members WHERE uuid = ?')
-            .run(row.uuid)
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare('DELETE FROM alliance_members WHERE uuid = ?')
+        //     .run(row.uuid)
+        const sqlDelete = 'DELETE FROM alliance_members WHERE uuid = ?';
+        await pool.execute<ResultSetHeader>(sqlDelete, [row.uuid]);
     }
 }
+
 
 export async function leaveAlliance(
     allianceUuid: string,
@@ -332,18 +403,24 @@ export async function leaveAlliance(
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право покидать альянсы' },
-        })
+        });
     }
-    const res = await db()
-        .prepare('DELETE FROM alliance_members WHERE alliance_uuid = ? AND state_uuid = ?')
-        .run(allianceUuid, stateUuid)
 
-    if (!res.success) {
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const res = await db()
+    //     .prepare('DELETE FROM alliance_members WHERE alliance_uuid = ? AND state_uuid = ?')
+    //     .run(allianceUuid, stateUuid)
+    const sqlDelete = 'DELETE FROM alliance_members WHERE alliance_uuid = ? AND state_uuid = ?';
+    const [res] = await pool.execute<ResultSetHeader>(sqlDelete, [allianceUuid, stateUuid]);
+
+    if (res.affectedRows === 0) {
         throw createError({
             statusCode: 404,
             statusMessage: 'Membership not found',
             data: { statusMessageRu: 'Государство не состоит в альянсе' },
-        })
+        });
     }
 
     const hist: IHistoryEvent = {
@@ -360,154 +437,183 @@ export async function leaveAlliance(
         city_uuids: null,
         details_json: null,
         created_by_uuid: playerUuid,
-
         season: null,
         is_deleted: false,
         deleted_at: null,
         deleted_by_uuid: null,
-    }
+    };
 
-    await addHistoryEvent(hist)
+    await addHistoryEvent(hist);
 
-    const { count } = (await db()
-        .prepare(`
-            SELECT COUNT(*) as count
-            FROM alliance_members
-            WHERE alliance_uuid = ? AND is_pending = 0
-        `)
-        .get(allianceUuid)) as { count: number }
+    // DEPRECATED, keeping this for info
+    // const { count } = (await db()
+    //     .prepare(`
+    //         SELECT COUNT(*) as count
+    //         FROM alliance_members
+    //         WHERE alliance_uuid = ? AND is_pending = 0
+    //     `)
+    //     .get(allianceUuid)) as { count: number }
+    const sqlCount = `
+        SELECT COUNT(*) as count
+        FROM alliance_members
+        WHERE alliance_uuid = ? AND is_pending = 0
+    `;
+    const [countRows] = await pool.execute<RowDataPacket[]>(sqlCount, [allianceUuid]);
+    const { count } = countRows[0] as { count: number };
 
     if (count < 1) {
-        await dissolveAlliance(allianceUuid, playerUuid)
+        await dissolveAlliance(allianceUuid, playerUuid);
     }
 }
+
 
 export async function dissolveAlliance(
     allianceUuid: string,
     byPlayerUuid: string,
     stateUuid?: string,
 ): Promise<void> {
-    if(stateUuid){
+    if (stateUuid) {
         if (!await isRoleHigherOrEqual(stateUuid, byPlayerUuid, RolesInState.RULER)) {
             throw createError({
                 statusCode: 403,
                 statusMessage: 'Not authorized',
                 data: { statusMessageRu: 'Отсутствует право распускать альянсы' },
-            })
+            });
         }
     }
-    await db()
-        .prepare('UPDATE alliances SET status = ?, updated = ? WHERE uuid = ?')
-        .run(AllianceStatus.DISSOLVED, Date.now(), allianceUuid)
 
-    await db()
-        .prepare('DELETE FROM alliance_members WHERE alliance_uuid = ?')
-        .run(allianceUuid)
+    const pool = useMySQL('states');
 
-    if (stateUuid) {
-        const hist: IHistoryEvent = {
-            uuid: uuidv4(),
-            created: Date.now(),
-            updated: Date.now(),
-            type: HistoryEventType.ALLIANCE_DISSOLVED,
-            title: 'Альянс распущен',
-            description: 'Альянс прекратил существование.',
-            state_uuids: [stateUuid],
-            alliance_uuids: [allianceUuid],
-            player_uuids: [byPlayerUuid],
-            war_uuid: null,
-            city_uuids: null,
-            details_json: null,
-            created_by_uuid: byPlayerUuid,
+    // DEPRECATED, keeping this for info
+    // await db()
+    //     .prepare('UPDATE alliances SET status = ?, updated = ? WHERE uuid = ?')
+    //     .run(AllianceStatus.DISSOLVED, Date.now(), allianceUuid)
+    const sqlUpdateAlliance = 'UPDATE alliances SET status = ?, updated = ? WHERE uuid = ?';
+    await pool.execute<ResultSetHeader>(sqlUpdateAlliance, [AllianceStatus.DISSOLVED, Date.now(), allianceUuid]);
 
-            season: null,
-            is_deleted: false,
-            deleted_at: null,
-            deleted_by_uuid: null,
-        }
+    // DEPRECATED, keeping this for info
+    // await db()
+    //     .prepare('DELETE FROM alliance_members WHERE alliance_uuid = ?')
+    //     .run(allianceUuid)
+    const sqlDeleteMembers = 'DELETE FROM alliance_members WHERE alliance_uuid = ?';
+    await pool.execute<ResultSetHeader>(sqlDeleteMembers, [allianceUuid]);
 
-        await addHistoryEvent(hist)
+    const hist: IHistoryEvent = {
+        uuid: uuidv4(),
+        created: Date.now(),
+        updated: Date.now(),
+        type: HistoryEventType.ALLIANCE_DISSOLVED,
+        title: 'Альянс распущен',
+        description: stateUuid
+            ? 'Альянс прекратил существование.'
+            : 'Альянс прекратил существование в связи в выходом из него последнего члена.',
+        state_uuids: stateUuid ? [stateUuid] : null,
+        alliance_uuids: [allianceUuid],
+        player_uuids: [byPlayerUuid],
+        war_uuid: null,
+        city_uuids: null,
+        details_json: null,
+        created_by_uuid: byPlayerUuid,
+        season: null,
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by_uuid: null,
+    };
 
-    } else {
-
-        const hist: IHistoryEvent = {
-            uuid: uuidv4(),
-            created: Date.now(),
-            updated: Date.now(),
-            type: HistoryEventType.ALLIANCE_DISSOLVED,
-            title: 'Альянс распущен',
-            description: 'Альянс прекратил существование в связи в выходом из него последнего члена.',
-            state_uuids: null,
-            alliance_uuids: [allianceUuid],
-            player_uuids: [byPlayerUuid],
-            war_uuid: null,
-            city_uuids: null,
-            details_json: null,
-            created_by_uuid: byPlayerUuid,
-
-            season: null,
-            is_deleted: false,
-            deleted_at: null,
-            deleted_by_uuid: null,
-        }
-
-        await addHistoryEvent(hist)
-    }
+    await addHistoryEvent(hist);
 }
 
+
 export async function getAllianceByUuid(uuid: string): Promise<IAlliance> {
-    const row = await db()
-        .prepare('SELECT * FROM alliances WHERE uuid = ?')
-        .get(uuid) as IAlliance | undefined
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const row = await db()
+    //     .prepare('SELECT * FROM alliances WHERE uuid = ?')
+    //     .get(uuid) as IAlliance | undefined
+    const sql = 'SELECT * FROM `alliances` WHERE `uuid` = ? LIMIT 1';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [uuid]);
+    const row = rows[0] as IAlliance | undefined;
 
     if (!row) {
         throw createError({
             statusCode: 404,
             statusMessage: 'Alliance not found',
             data: { statusMessageRu: 'Альянс не найден' },
-        })
+        });
     }
 
-    row.flag_link = transformFlagLink(row.flag_link)
+    row.flag_link = transformFlagLink(row.flag_link);
 
-    return row
+    return row;
 }
 
 export async function listAllianceMembers(
     allianceUuid: string,
 ): Promise<IAllianceMember[]> {
-    return (await db()
-        .prepare('SELECT * FROM alliance_members WHERE alliance_uuid = ? AND is_pending = 0')
-        .all(allianceUuid)) as IAllianceMember[]
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // return (await db()
+    //     .prepare('SELECT * FROM alliance_members WHERE alliance_uuid = ? AND is_pending = 0')
+    //     .all(allianceUuid)) as IAllianceMember[]
+    const sql = 'SELECT * FROM `alliance_members` WHERE `alliance_uuid` = ? AND `is_pending` = 0';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [allianceUuid]);
+    return rows as IAllianceMember[];
 }
 
 export async function listAlliancesForState(
     stateUuid: string,
 ): Promise<IAlliance[]> {
-    return (await db()
-        .prepare(`
-            SELECT a.*
-            FROM alliance_members am
-            JOIN alliances a ON a.uuid = am.alliance_uuid
-            WHERE am.state_uuid = ?
-              AND am.is_pending = 0
-              AND a.status = ?
-        `)
-        .all(stateUuid, AllianceStatus.ACTIVE)) as IAlliance[]
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // return (await db()
+    //     .prepare(`
+    //         SELECT a.*
+    //         FROM alliance_members am
+    //         JOIN alliances a ON a.uuid = am.alliance_uuid
+    //         WHERE am.state_uuid = ?
+    //           AND am.is_pending = 0
+    //           AND a.status = ?
+    //     `)
+    //     .all(stateUuid, AllianceStatus.ACTIVE)) as IAlliance[]
+    const sql = `
+        SELECT a.*
+        FROM alliance_members am
+        JOIN alliances a ON a.uuid = am.alliance_uuid
+        WHERE am.state_uuid = ?
+          AND am.is_pending = 0
+          AND a.status = ?
+    `;
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [stateUuid, AllianceStatus.ACTIVE]);
+    return rows as IAlliance[];
 }
 
 export async function listAlliances(
     startAt = 0,
     limit = 100
 ): Promise<IAlliance[]> {
-    const rows = await db()
-        .prepare('SELECT * FROM alliances WHERE status = ? ORDER BY created DESC LIMIT ? OFFSET ?')
-        .all(AllianceStatus.ACTIVE, limit, startAt) as IAlliance[];
-    rows.forEach(row => {
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const rows = await db()
+    //     .prepare('SELECT * FROM alliances WHERE status = ? ORDER BY created DESC LIMIT ? OFFSET ?')
+    //     .all(AllianceStatus.ACTIVE, limit, startAt) as IAlliance[];
+    const sql = `
+        SELECT * FROM alliances
+        WHERE status = ?
+        ORDER BY created DESC
+        LIMIT ? OFFSET ?
+    `;
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [AllianceStatus.ACTIVE, limit, startAt]);
+    const alliances = rows as IAlliance[];
+    alliances.forEach(row => {
         row.flag_link = transformFlagLink(row.flag_link);
     });
-    return rows;
+    return alliances;
 }
+
 
 /* ───────────────── 2. ДВУСТОРОННИЕ ОТНОШЕНИЯ ────────────────── */
 
@@ -522,34 +628,57 @@ async function _applyRelation(
     stateUuidB: string,
     kind: RelationKind | null,
 ): Promise<void> {
-    const [a, b] = sortPair(stateUuidA, stateUuidB)
+    const [a, b] = sortPair(stateUuidA, stateUuidB);
+    const pool = useMySQL('states');
 
     if (kind === null) {
-        await db()
-            .prepare('DELETE FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?')
-            .run(a, b)
-        return
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare('DELETE FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?')
+        //     .run(a, b)
+        const sqlDelete = 'DELETE FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?';
+        await pool.execute<ResultSetHeader>(sqlDelete, [a, b]);
+        return;
     }
 
-    const exists = await db()
-        .prepare('SELECT 1 FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?')
-        .get(a, b)
+    // DEPRECATED, keeping this for info
+    // const exists = await db()
+    //     .prepare('SELECT 1 FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?')
+    //     .get(a, b)
+    const sqlExists = 'SELECT 1 FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ? LIMIT 1';
+    const [existsRows] = await pool.execute<RowDataPacket[]>(sqlExists, [a, b]);
+    const exists = existsRows.length > 0;
 
     if (exists) {
-        await db()
-            .prepare('UPDATE state_relations SET kind = ?, updated = ? WHERE state_a_uuid = ? AND state_b_uuid = ?')
-            .run(kind, Date.now(), a, b)
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare('UPDATE state_relations SET kind = ?, updated = ? WHERE state_a_uuid = ? AND state_b_uuid = ?')
+        //     .run(kind, Date.now(), a, b)
+        const sqlUpdate = 'UPDATE state_relations SET kind = ?, updated = ? WHERE state_a_uuid = ? AND state_b_uuid = ?';
+        await pool.execute<ResultSetHeader>(sqlUpdate, [kind, Date.now(), a, b]);
     } else {
-        await db()
-            .prepare(`
-        INSERT INTO state_relations (
-          uuid, created, updated,
-          state_a_uuid, state_b_uuid, kind
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `)
-            .run(uuidv4(), Date.now(), Date.now(), a, b, kind)
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare(`
+        // INSERT INTO state_relations (
+        //   uuid, created, updated,
+        //   state_a_uuid, state_b_uuid, kind
+        // ) VALUES (?, ?, ?, ?, ?, ?)
+        // `)
+        //     .run(uuidv4(), Date.now(), Date.now(), a, b, kind)
+        const sqlInsert = `
+            INSERT INTO state_relations (
+                uuid, created, updated,
+                state_a_uuid, state_b_uuid, kind
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        const now = Date.now();
+        await pool.execute<ResultSetHeader>(sqlInsert, [
+            uuidv4(), now, now, a, b, kind
+        ]);
     }
 }
+
 
 /**
  * 2.1. Создать заявку на изменение двусторонних отношений
@@ -571,57 +700,91 @@ export async function requestRelationChange(
             statusCode: 400,
             statusMessage: 'Same state',
             data: { statusMessageRu: 'Нельзя изменить отношения с самим собой' },
-        })
+        });
     }
+
     if (!await isRoleHigherOrEqual(proposerStateUuid, proposerPlayerUuid, RolesInState.DIPLOMAT)) {
         throw createError({
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право инициировать заявки на отношения' },
-        })
+        });
     }
-    await getStateByUuid(proposerStateUuid)
-    await getStateByUuid(targetStateUuid)
 
-    const [a, b] = sortPair(proposerStateUuid, targetStateUuid)
+    await getStateByUuid(proposerStateUuid);
+    await getStateByUuid(targetStateUuid);
 
-    const pending = await db()
-        .prepare(`
-      SELECT 1
-      FROM state_relation_requests
-      WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
-    `)
-        .get(a, b, RelationRequestStatus.PENDING)
+    const [a, b] = sortPair(proposerStateUuid, targetStateUuid);
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const pending = await db()
+    //     .prepare(`
+    //   SELECT 1
+    //   FROM state_relation_requests
+    //   WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+    // `)
+    //     .get(a, b, RelationRequestStatus.PENDING)
+    const sqlCheck = `
+        SELECT 1
+        FROM state_relation_requests
+        WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+        LIMIT 1
+    `;
+    const [pendingRows] = await pool.execute<RowDataPacket[]>(sqlCheck, [a, b, RelationRequestStatus.PENDING]);
+    const pending = pendingRows.length > 0;
+
     if (pending) {
         throw createError({
             statusCode: 400,
             statusMessage: 'Already requested',
             data: { statusMessageRu: 'Уже есть ожидающая заявка на изменение отношений' },
-        })
+        });
     }
 
-    const reqUuid = uuidv4()
-    await db()
-        .prepare(`
-      INSERT INTO state_relation_requests (
-        uuid, created, updated,
-        state_a_uuid, state_b_uuid,
-        proposer_state_uuid, requested_kind, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-        .run(
-            reqUuid,
-            Date.now(),
-            Date.now(),
-            a,
-            b,
-            proposerStateUuid,
-            requestedKind,
-            RelationRequestStatus.PENDING,
-        )
+    const reqUuid = uuidv4();
 
-    return reqUuid
+    // DEPRECATED, keeping this for info
+    // await db()
+    //     .prepare(`
+    //   INSERT INTO state_relation_requests (
+    //     uuid, created, updated,
+    //     state_a_uuid, state_b_uuid,
+    //     proposer_state_uuid, requested_kind, status
+    //   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    // `)
+    //     .run(
+    //         reqUuid,
+    //         Date.now(),
+    //         Date.now(),
+    //         a,
+    //         b,
+    //         proposerStateUuid,
+    //         requestedKind,
+    //         RelationRequestStatus.PENDING,
+    //     )
+    const sqlInsert = `
+        INSERT INTO state_relation_requests (
+            uuid, created, updated,
+            state_a_uuid, state_b_uuid,
+            proposer_state_uuid, requested_kind, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const now = Date.now();
+    await pool.execute<ResultSetHeader>(sqlInsert, [
+        reqUuid,
+        now,
+        now,
+        a,
+        b,
+        proposerStateUuid,
+        requestedKind,
+        RelationRequestStatus.PENDING,
+    ]);
+
+    return reqUuid;
 }
+
 
 /**
  * 2.2. Рассмотреть (одобрить/отклонить) заявку на изменение отношений
@@ -642,24 +805,29 @@ export async function reviewRelationChange(
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право рассматривать заявки на отношения' },
-        })
+        });
     }
 
-    const row = await db()
-        .prepare('SELECT * FROM state_relation_requests WHERE uuid = ?')
-        .get(requestUuid) as IStateRelationRequest | undefined
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const row = await db()
+    //     .prepare('SELECT * FROM state_relation_requests WHERE uuid = ?')
+    //     .get(requestUuid) as IStateRelationRequest | undefined
+    const sqlSelect = 'SELECT * FROM state_relation_requests WHERE uuid = ? LIMIT 1';
+    const [rows] = await pool.execute<RowDataPacket[]>(sqlSelect, [requestUuid]);
+    const row = rows[0] as IStateRelationRequest | undefined;
 
     if (!row || row.status !== RelationRequestStatus.PENDING) {
         throw createError({
             statusCode: 404,
             statusMessage: 'Request not found',
             data: { statusMessageRu: 'Заявка не найдена или уже рассмотрена' },
-        })
+        });
     }
 
-    const { state_a_uuid, state_b_uuid, proposer_state_uuid, requested_kind } = row
+    const { state_a_uuid, state_b_uuid, proposer_state_uuid, requested_kind } = row;
 
-    // Только «вторая сторона» (не инициатор) может рассмотреть
     if (
         (reviewerStateUuid !== state_a_uuid && reviewerStateUuid !== state_b_uuid) ||
         reviewerStateUuid === proposer_state_uuid
@@ -668,37 +836,46 @@ export async function reviewRelationChange(
             statusCode: 403,
             statusMessage: 'Not authorized',
             data: { statusMessageRu: 'Отсутствует право рассматривать заявку' },
-        })
+        });
     }
 
-    const now = Date.now()
+    const now = Date.now();
 
     if (approve) {
-        // Применяем изменение в state_relations
-        await db()
-            .prepare(`
-                DELETE FROM state_relation_requests
-                WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
-            `)
-            .run(state_a_uuid, state_b_uuid, RelationRequestStatus.APPROVED);
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare(`
+        //         DELETE FROM state_relation_requests
+        //         WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+        //     `)
+        //     .run(state_a_uuid, state_b_uuid, RelationRequestStatus.APPROVED);
+        const sqlDeleteDuplicates = `
+            DELETE FROM state_relation_requests
+            WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+        `;
+        await pool.execute<ResultSetHeader>(sqlDeleteDuplicates, [state_a_uuid, state_b_uuid, RelationRequestStatus.APPROVED]);
 
-        await _applyRelation(state_a_uuid, state_b_uuid, requested_kind)
+        await _applyRelation(state_a_uuid, state_b_uuid, requested_kind);
 
-
-
-        await db()
-            .prepare(`
-        UPDATE state_relation_requests
-        SET status = ?, updated = ?
-        WHERE uuid = ?
-      `)
-            .run(RelationRequestStatus.APPROVED, now, requestUuid)
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare(`
+        //         UPDATE state_relation_requests
+        //         SET status = ?, updated = ?
+        //         WHERE uuid = ?
+        //     `)
+        //     .run(RelationRequestStatus.APPROVED, now, requestUuid)
+        const sqlUpdateStatus = `
+            UPDATE state_relation_requests
+            SET status = ?, updated = ?
+            WHERE uuid = ?
+        `;
+        await pool.execute<ResultSetHeader>(sqlUpdateStatus, [RelationRequestStatus.APPROVED, now, requestUuid]);
 
         const [state_a, state_b] = await Promise.all([
             getStateByUuid(state_a_uuid),
             getStateByUuid(state_b_uuid),
-        ])
-
+        ]);
 
         const relationText = (kind: RelationKind | null) => {
             if (kind === null) return 'Нейтралитет (разрыв)';
@@ -712,7 +889,7 @@ export async function reviewRelationChange(
         const description =
             requested_kind === null
                 ? 'Отношения расторгнуты'
-                : `Государства ${state_a.name} и ${state_b.name} установили статус двусторонних отношений «${relationText(requested_kind)}».`
+                : `Государства ${state_a.name} и ${state_b.name} установили статус двусторонних отношений «${relationText(requested_kind)}».`;
 
         const hist: IHistoryEvent = {
             uuid: uuidv4(),
@@ -728,69 +905,102 @@ export async function reviewRelationChange(
             city_uuids: null,
             details_json: JSON.stringify({ requested_kind }),
             created_by_uuid: reviewerPlayerUuid,
-
             season: null,
             is_deleted: false,
             deleted_at: null,
             deleted_by_uuid: null,
-        }
+        };
 
-        await addHistoryEvent(hist)
+        await addHistoryEvent(hist);
     } else {
-        await db()
-            .prepare(`
-                DELETE FROM state_relation_requests
-                WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
-            `)
-            .run(state_a_uuid, state_b_uuid, RelationRequestStatus.DECLINED);
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare(`
+        //         DELETE FROM state_relation_requests
+        //         WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+        //     `)
+        //     .run(state_a_uuid, state_b_uuid, RelationRequestStatus.DECLINED);
+        const sqlDeleteDeclined = `
+            DELETE FROM state_relation_requests
+            WHERE state_a_uuid = ? AND state_b_uuid = ? AND status = ?
+        `;
+        await pool.execute<ResultSetHeader>(sqlDeleteDeclined, [state_a_uuid, state_b_uuid, RelationRequestStatus.DECLINED]);
 
-        await db()
-            .prepare('UPDATE state_relation_requests SET status = ?, updated = ? WHERE uuid = ?')
-            .run(RelationRequestStatus.DECLINED, now, requestUuid)
+        // DEPRECATED, keeping this for info
+        // await db()
+        //     .prepare('UPDATE state_relation_requests SET status = ?, updated = ? WHERE uuid = ?')
+        //     .run(RelationRequestStatus.DECLINED, now, requestUuid)
+        const sqlUpdateDeclined = `
+            UPDATE state_relation_requests
+            SET status = ?, updated = ?
+            WHERE uuid = ?
+        `;
+        await pool.execute<ResultSetHeader>(sqlUpdateDeclined, [RelationRequestStatus.DECLINED, now, requestUuid]);
     }
 }
 
-/**
- * 2.3. Получить текущий характер отношений (если нет записи → null)
- */
+
+
 export async function getRelation(
     stateUuidA: string,
     stateUuidB: string,
 ): Promise<RelationKind | null> {
-    const [a, b] = sortPair(stateUuidA, stateUuidB)
-    const row = await db()
-        .prepare('SELECT kind FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?')
-        .get(a, b) as { kind: RelationKind } | undefined
+    const [a, b] = sortPair(stateUuidA, stateUuidB);
+    const pool = useMySQL('states');
 
-    return row ? row.kind : null
+    // DEPRECATED, keeping this for info
+    // const row = await db()
+    //     .prepare('SELECT kind FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ?')
+    //     .get(a, b) as { kind: RelationKind } | undefined
+    const sql = 'SELECT kind FROM state_relations WHERE state_a_uuid = ? AND state_b_uuid = ? LIMIT 1';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [a, b]);
+    const row = rows[0] as { kind: RelationKind } | undefined;
+
+    return row ? row.kind : null;
 }
 
-/**
- * 2.4. Список всех отношений для данного государства
- */
 export async function getStateRelationsList(
     stateUuid: string,
 ): Promise<IStateRelation[]> {
-    return (await db()
-        .prepare(`
-            SELECT * FROM state_relations
-            WHERE state_a_uuid = ? OR state_b_uuid = ?
-        `)
-        .all(stateUuid, stateUuid)) as IStateRelation[]
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // return (await db()
+    //     .prepare(`
+    //         SELECT * FROM state_relations
+    //         WHERE state_a_uuid = ? OR state_b_uuid = ?
+    //     `)
+    //     .all(stateUuid, stateUuid)) as IStateRelation[]
+    const sql = `
+        SELECT * FROM state_relations
+        WHERE state_a_uuid = ? OR state_b_uuid = ?
+    `;
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [stateUuid, stateUuid]);
+    return rows as IStateRelation[];
 }
 
 export async function listPendingRelationRequests(
     stateUuid: string
 ): Promise<IStateRelationRequest[]> {
-    const [aDummy, bDummy] = sortPair(stateUuid, stateUuid) // здесь можно просто использовать MySQL-условие OR
-    return (await db()
-        .prepare(`
-      SELECT * FROM state_relation_requests
-      WHERE (state_a_uuid = ? OR state_b_uuid = ?)
-        AND status = ?
-    `)
-        .all(stateUuid, stateUuid, RelationRequestStatus.PENDING)) as IStateRelationRequest[]
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // return (await db()
+    //     .prepare(`
+    //   SELECT * FROM state_relation_requests
+    //   WHERE (state_a_uuid = ? OR state_b_uuid = ?)
+    //     AND status = ?
+    // `)
+    //     .all(stateUuid, stateUuid, RelationRequestStatus.PENDING)) as IStateRelationRequest[]
+    const sql = `
+        SELECT * FROM state_relation_requests
+        WHERE (state_a_uuid = ? OR state_b_uuid = ?)
+          AND status = ?
+    `;
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [stateUuid, stateUuid, RelationRequestStatus.PENDING]);
+    return rows as IStateRelationRequest[];
 }
+
 
 
 /* ─────────────────────────── EOF ────────────────────────────── */

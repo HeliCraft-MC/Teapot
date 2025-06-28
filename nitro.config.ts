@@ -20,47 +20,30 @@ export default defineNitroConfig({
             version: '1.0'
         }
     },
-    database: {
-        default: {
-            connector: 'mysql2',
-            options: {
-                host:     process.env.MYSQL_HOST || '5.83.140.42',
-                port:     Number(process.env.MYSQL_PORT) || 3306,
-                user:     process.env.MYSQL_USER || 'ms0urVpn',
-                password: process.env.MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
-                database: process.env.MYSQL_DATABASE || 'newAuth',
-                enableKeepAlive: true,
-                keepAliveInitialDelay: 0,
-                pool: {
-                    waitForConnections: true,
-                    connectionLimit: 5,
-                    maxIdle: 10,
-                    idleTimeout: 60_000
-                },
-            }
-        },
-        states: {
-            connector: 'mysql2',
-            options: {
-                host:     process.env.STATES_MYSQL_HOST || '5.83.140.42',
-                port:     Number(process.env.STATES_MYSQL_PORT) || 3306,
-                user:     process.env.STATES_MYSQL_USER || 'ms0urVpn',
-                password: process.env.STATES_MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
-                database: process.env.STATES_MYSQL_DATABASE || 'states',
-                enableKeepAlive: true,
-                keepAliveInitialDelay: 0,
-                pool: {
-                    waitForConnections: true,
-                    connectionLimit: 5,
-                    maxIdle: 10,
-                    idleTimeout: 60_000
-                },
-            }
-        }
-    },
     runtimeConfig: {
         jwtSecret: process.env.JWT_SECRET || 'secret',
         uploads: process.env.UPLOAD_DIR || 'uploads',
         sqliteSkinPath: process.env.SQLITE_PATH || 'db.sqlite',
+        databaseDebug: Boolean(process.env.DATABASE_DEBUG) || true,
+        database: {
+            default: {
+                options: {
+                    host:     process.env.MYSQL_HOST || '5.83.140.42',
+                    port:     Number(process.env.MYSQL_PORT) || 3306,
+                    user:     process.env.MYSQL_USER || 'ms0urVpn',
+                    password: process.env.MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
+                    database: process.env.MYSQL_DATABASE || 'newAuth',
+                }
+            },
+            states: {
+                options: {
+                    host:     process.env.STATES_MYSQL_HOST || '5.83.140.42',
+                    port:     Number(process.env.STATES_MYSQL_PORT) || 3306,
+                    user:     process.env.STATES_MYSQL_USER || 'ms0urVpn',
+                    password: process.env.STATES_MYSQL_PASSWORD || 'p`#1888zAUhsA{X/=',
+                    database: process.env.STATES_MYSQL_DATABASE || 'states',
+                }
+            }
+        },
     }
 });
