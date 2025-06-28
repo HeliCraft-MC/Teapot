@@ -26,7 +26,7 @@ COPY . .
 
 # Аргумент сборки для передачи хеша коммита.
 # Пример запуска: docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -t my-app .
-ARG GIT_COMMIT=unknown
+ARG NODE_COMMIT=unknown
 ENV NODE_COMMIT=${GIT_COMMIT}
 
 # Запускаем скрипт сборки. Nitro создаст папку .output/
