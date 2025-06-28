@@ -68,4 +68,4 @@ EXPOSE 3300
 
 # Команда для запуска. `pm2-runtime` — это специальная команда для Docker,
 # которая запускает PM2 в "foreground" режиме, что позволяет Docker управлять процессом.
-CMD ["pm2-runtime", "ecosystem.config.cjs"]
+CMD ["sh", "-c", "set -a && . ./.env && pm2-runtime ecosystem.config.cjs"]
