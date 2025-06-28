@@ -21,6 +21,7 @@ export default defineNitroConfig({
         }
     },
     runtimeConfig: {
+        teapotCommit: process.env.NODE_COMMIT || 'unknown',
         jwtSecret: process.env.JWT_SECRET,
         uploads: process.env.UPLOAD_DIR,
         sqliteSkinPath: process.env.SQLITE_PATH,
