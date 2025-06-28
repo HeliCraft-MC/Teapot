@@ -11,11 +11,11 @@ import {
     isPlayerInState,
     isPlayerRulerSomewhere
 } from "~/utils/states/citizenship.utils";
+import {useMySQL} from "~/plugins/mySql";
+import {ResultSetHeader, RowDataPacket} from "mysql2";
 
 const MAX_NAME_LEN = 32
 const MIN_NAME_LEN = 3
-
-const db = () => useDatabase('states')
 
 
 const strictHexColor = /^#[0-9a-f]{6}$/i
@@ -53,30 +53,37 @@ async function assertState(name: string, throwIfExists?: boolean): Promise<void 
             statusCode: 422,
             statusMessage: 'Invalid name',
             data: { statusMessageRu: 'Название пустое либо слишком длинное' }
-        })
+        });
     }
 
-
     if (throwIfExists != undefined) {
-        const sql = db().prepare('SELECT * FROM states WHERE LOWER(name) = ?')
-        const existing = await sql.get(name.toLowerCase()) as IState | undefined
+        const pool = useMySQL('states');
+
+        // DEPRECATED, keeping this for info
+        // const sql = db().prepare('SELECT * FROM states WHERE LOWER(name) = ?')
+        // const existing = await sql.get(name.toLowerCase()) as IState | undefined
+
+        const sql = 'SELECT * FROM `states` WHERE LOWER(`name`) = ?';
+        const [rows] = await pool.execute<RowDataPacket[]>(sql, [name.toLowerCase()]);
+        const existing = rows[0] as IState | undefined;
 
         if (existing) {
-            if (throwIfExists == true) {
+            if (throwIfExists === true) {
                 throw createError({
                     statusCode: 409,
                     statusMessage: 'State with this name already exists',
                     data: { statusMessageRu: 'Государство с таким названием уже существует' }
-                })
+                });
             } else {
-                return true
+                return true;
             }
         }
-        return false
+        return false;
     }
 
     return;
 }
+
 
 /**
  * Converts a flag image (Buffer) to a link (Uploads image to { uploadDir = './uploads' } = useRuntimeConfig()).
@@ -126,100 +133,119 @@ async function removeEmptyDirs(root: string): Promise<void> {
  */
 export async function updateStateFlag(stateUuid: string, flag: Buffer | string): Promise<string> {
     // Проверяем, что штат существует
-    await getStateByUuid(stateUuid)
+    await getStateByUuid(stateUuid);
 
-    const { uploadDir = './uploads' } = useRuntimeConfig()
-    const flagsRoot = join(uploadDir, 'flags')
+    const pool = useMySQL('states');
+    const { uploadDir = './uploads' } = useRuntimeConfig();
+    const flagsRoot = join(uploadDir, 'flags');
 
     // Удаляем старый файл флага, если он локальный
-    const old = await db().prepare('SELECT flag_link FROM states WHERE uuid=?').get(stateUuid) as { flag_link: string | null }
-    if (old.flag_link && !old.flag_link.startsWith('http')) {
-        await fsp.rm(join(uploadDir, old.flag_link), { force: true })
-        await removeEmptyDirs(flagsRoot)
+
+    // DEPRECATED, keeping this for info
+    // const old = await db().prepare('SELECT flag_link FROM states WHERE uuid=?').get(stateUuid) as { flag_link: string | null }
+    const [rows] = await pool.execute<RowDataPacket[]>(
+        'SELECT `flag_link` FROM `states` WHERE `uuid` = ?',
+        [stateUuid]
+    );
+    const old = rows[0] as { flag_link: string | null } | undefined;
+
+    if (old?.flag_link && !old.flag_link.startsWith('http')) {
+        await fsp.rm(join(uploadDir, old.flag_link), { force: true });
+        await removeEmptyDirs(flagsRoot);
     }
 
     // Загружаем новый флаг
-    let newLink: string
+    let newLink: string;
     if (Buffer.isBuffer(flag)) {
-        newLink = await flagToUploads(flag)
+        newLink = await flagToUploads(flag);
     } else {
-        const isLocal = flag.startsWith('/')
-        const isRemote = flag.startsWith('http://') || flag.startsWith('https://')
+        const isLocal = flag.startsWith('/');
+        const isRemote = flag.startsWith('http://') || flag.startsWith('https://');
         if ((!isLocal && !isRemote) || !flag.endsWith('.png')) {
             throw createError({
                 statusCode: 422,
                 statusMessage: 'Invalid flag link',
                 data: { statusMessageRu: 'Неверная ссылка на флаг' }
-            })
+            });
         }
-        newLink = flag
+        newLink = flag;
     }
 
     // Обновляем запись в БД
-    const res = await db().prepare('UPDATE states SET flag_link=?, updated=? WHERE uuid=?')
-        .run(newLink, Date.now(), stateUuid)
-    if (!res.success) {
+
+    // DEPRECATED, keeping this for info
+    // const res = await db().prepare('UPDATE states SET flag_link=?, updated=? WHERE uuid=?')
+    //     .run(newLink, Date.now(), stateUuid)
+
+    const [result] = await pool.execute<ResultSetHeader>(
+        'UPDATE `states` SET `flag_link` = ?, `updated` = ? WHERE `uuid` = ?',
+        [newLink, Date.now(), stateUuid]
+    );
+
+    if (result.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to update flag',
             data: { statusMessageRu: 'Не удалось обновить флаг' }
-        })
+        });
     }
 
-    return newLink
+    return newLink;
 }
+
 
 
 
 export async function getStateByName(name: string): Promise<IState | null> {
-    const sql = db().prepare('SELECT * FROM states WHERE LOWER(name) = ?')
-    const state = await sql.get(name.toLowerCase()) as IState | undefined
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const sql = db().prepare('SELECT * FROM states WHERE LOWER(name) = ?')
+    // const state = await sql.get(name.toLowerCase()) as IState | undefined
+
+    const sql = 'SELECT * FROM `states` WHERE LOWER(`name`) = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [name.toLowerCase()]);
+    const state = rows[0] as IState | undefined;
 
     if (!state) {
         throw createError({
             statusCode: 404,
             statusMessage: 'State not found',
             data: { statusMessageRu: 'Государство не найдено' }
-        })
+        });
     }
 
-    state.flag_link = transformFlagLink(state.flag_link)
+    state.flag_link = transformFlagLink(state.flag_link);
 
-    return state
+    return state;
 }
+
 
 export async function getStateByUuid(uuid: string): Promise<IState | null> {
-    const sql = db().prepare('SELECT * FROM states WHERE uuid = ?')
-    const state = await sql.get(uuid) as IState | undefined
+    const pool = useMySQL('states');
+
+    // DEPRECATED, keeping this for info
+    // const sql = db().prepare('SELECT * FROM states WHERE uuid = ?')
+    // const state = await sql.get(uuid) as IState | undefined
+
+    const sql = 'SELECT * FROM `states` WHERE `uuid` = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [uuid]);
+    const state = rows[0] as IState | undefined;
 
     if (!state) {
         throw createError({
             statusCode: 404,
             statusMessage: 'State not found',
             data: { statusMessageRu: 'Государство не найдено' }
-        })
+        });
     }
 
-    state.flag_link = transformFlagLink(state.flag_link)
+    state.flag_link = transformFlagLink(state.flag_link);
 
-    return state
+    return state;
 }
 
-/**
- * Declares a new state with the given parameters.
- * @param name - The name of the state.
- * @param description - A brief description of the state.
- * @param color - The color of the state in hex format (e.g., #RRGGBB).
- * @param govForm - The form of government for the state (default is GovernmentForm.TRIBAL).
- * @param hasElections - Whether the state has elections (default is false).
- * @param telegramLink - Optional link to the state's Telegram channel or group.
- * @param creatorUuid - The UUID of the user creating the state, used as the initial ruler.
- * @param rulerUuid - The UUID of the ruler of the state (default is the creator's UUID).
- * @param allowDualCitizenship - Whether the state allows multi citizenship (default is false).
- * @param freeEntry - Whether the state allows free entry (default is true).
- * @param freeEntryDescription - Optional description for free entry, if applicable.
- * @param flag - Link to the flag image or a Buffer containing the flag data (default is a placeholder image).
- */
+
 export async function declareNewState(
     name: string,
     description: string,
@@ -235,11 +261,9 @@ export async function declareNewState(
     flag: Buffer | string = '/defaults/flags/default.png',
 ): Promise<string> {
 
-    /* ---- Check if the state name is valid and does not already exist ---- */
     await assertState(name, true)
     assertColor(color)
 
-    /* ---- Checks ---- */
     let flagLink: string | null = null
     if (typeof flag === 'string') {
         const isLocal = flag.startsWith('/')
@@ -249,7 +273,6 @@ export async function declareNewState(
         }
         flagLink = flag
     } else if (Buffer.isBuffer(flag)) {
-        // If flag is a Buffer, convert it to uploads
         flagLink = await flagToUploads(flag)
     } else {
         throw createError({
@@ -288,71 +311,87 @@ export async function declareNewState(
         }
     }
 
-    /* ---- Insert the new state into the database ---- */
-    const sql = db().prepare(`
+    const pool = useMySQL('states')
+
+    const uuid = uuidv4()
+    const now = Date.now()
+
+    // DEPRECATED:
+    // const sql = db().prepare(`
+    //     INSERT INTO states (...) VALUES (?, ?, ..., ?)
+    // `)
+    // const req = await sql.run(...)
+
+    const stateSql = `
         INSERT INTO states (
             uuid, name, description, color_hex, gov_form, has_elections,
             telegram_link, creator_uuid, ruler_uuid, allow_dual_citizenship,
             free_entry, free_entry_description, status, flag_link, created, updated
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-    const uuid = uuidv4()
-
-    const req = await sql.run(
+    const stateValues = [
         uuid, name, description, color, govForm, hasElections,
         telegramLink, creatorUuid, rulerUuid, allowDualCitizenship,
-        freeEntry, freeEntryDescription, StateStatus.PENDING , flagLink, Date.now(), Date.now())
+        freeEntry, freeEntryDescription, StateStatus.PENDING, flagLink, now, now
+    ]
 
-    if (req.success == true) {
-        // Create the initial ruler member
-        const memberSql = db().prepare(`
-            INSERT INTO state_members (uuid, created, updated, state_uuid, city_uuid, player_uuid, role)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`)
-
-        const memberReq = await memberSql.run(
-            uuidv4(), Date.now(), Date.now(), uuid, null, rulerUuid, RolesInState.RULER
-        )
-
-        if (memberReq.success == true) {
-            // Create the initial history event
-            const historyEvent: IHistoryEvent = {
-                uuid: uuidv4(),
-                created: Date.now(),
-                updated: Date.now(),
-                type: HistoryEventType.STATE_CREATED,
-                title: "Создано новое государство",
-                description: `Государство "${name}" было создано.`,
-                state_uuids: [uuid],
-                player_uuids: [creatorUuid],
-                alliance_uuids: null,
-                war_uuid: null,
-                city_uuids: null,
-                details_json: null,
-                created_by_uuid: creatorUuid,
-                season: null,
-                is_deleted: false,
-                deleted_at: null,
-                deleted_by_uuid: null
-            }
-
-            await addHistoryEvent(historyEvent)
-
-            return uuid
-        } else {
-            throw createError({
-                statusCode: 500,
-                statusMessage: 'Failed to create initial ruler member',
-                data: { statusMessageRu: 'Не удалось создать начального правителя' }
-            })
-        }
-    } else {
+    const [stateRes] = await pool.execute<ResultSetHeader>(stateSql, stateValues)
+    if (stateRes.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to declare new state',
             data: { statusMessageRu: 'Не удалось создать новое государство' }
         })
     }
+
+    const memberUuid = uuidv4()
+
+    // DEPRECATED:
+    // const memberSql = db().prepare(`
+    //     INSERT INTO state_members (...) VALUES (?, ?, ..., ?)
+    // `)
+    // const memberReq = await memberSql.run(...)
+
+    const memberSql = `
+        INSERT INTO state_members (uuid, created, updated, state_uuid, city_uuid, player_uuid, role)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`
+    const memberValues = [
+        memberUuid, now, now, uuid, null, rulerUuid, RolesInState.RULER
+    ]
+
+    const [memberRes] = await pool.execute<ResultSetHeader>(memberSql, memberValues)
+    if (memberRes.affectedRows === 0) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to create initial ruler member',
+            data: { statusMessageRu: 'Не удалось создать начального правителя' }
+        })
+    }
+
+    const historyEvent: IHistoryEvent = {
+        uuid: uuidv4(),
+        created: now,
+        updated: now,
+        type: HistoryEventType.STATE_CREATED,
+        title: "Создано новое государство",
+        description: `Государство "${name}" было создано.`,
+        state_uuids: [uuid],
+        player_uuids: [creatorUuid],
+        alliance_uuids: null,
+        war_uuid: null,
+        city_uuids: null,
+        details_json: null,
+        created_by_uuid: creatorUuid,
+        season: null,
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by_uuid: null
+    }
+
+    await addHistoryEvent(historyEvent)
+    return uuid
 }
+
 
 /**
  * Вспомогательная функция для преобразования flag_link.
@@ -410,10 +449,10 @@ export async function searchStatesByFilters(
     startAt?: number,
     limit?: number
 ): Promise<IState[]> {
-    const db = useDatabase('states')
+    const pool = useMySQL('states') // Заменено: useDatabase → useMySQL
 
     const columnMap: Record<keyof StateFilter, string> = {
-        search:                   'name', // Поиск по имени
+        search:                   'name',
         name:                     'name',
         description:              'description',
         colorHex:                 'color_hex',
@@ -449,7 +488,6 @@ export async function searchStatesByFilters(
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
 
-    // Пагинация
     let paginationSQL = ''
     if (typeof limit === 'number') {
         paginationSQL += ` LIMIT ?`
@@ -459,26 +497,30 @@ export async function searchStatesByFilters(
             values.push(startAt)
         }
     } else if (typeof startAt === 'number') {
-        // если передан только startAt, нужно задать какой-то limit — например, больший
         paginationSQL += ` LIMIT 10 OFFSET ?`
         values.push(startAt)
     }
 
-    const sql = db.prepare(`SELECT * FROM states ${where}${paginationSQL}`)
-    const rows = await (values.length
-            ? sql.all(...values)
-            : sql.all()
-    ) as IState[]
+    // DEPRECATED:
+    // const db = useDatabase('states')
+    // const sql = db.prepare(`SELECT * FROM states ${where}${paginationSQL}`)
+    // const rows = await (values.length ? sql.all(...values) : sql.all()) as IState[]
 
-    if (!rows || rows.length === 0) {
+    const finalSql = `SELECT * FROM states ${where}${paginationSQL}`
+    const [rows] = await pool.execute<RowDataPacket[]>(finalSql, values)
+    const states = rows as IState[]
+
+    if (!states || states.length === 0) {
         return []
     }
-    // Преобразуем ссылки на флаги
-    for (const row of rows) {
-        row.flag_link = transformFlagLink(row.flag_link)
+
+    for (const state of states) {
+        state.flag_link = transformFlagLink(state.flag_link)
     }
-    return rows
+
+    return states
 }
+
 
 export async function listStates(startAt = 0, limit = 100): Promise<IState[]> {
     return searchStatesByFilters({}, startAt, limit)
@@ -488,8 +530,15 @@ export async function listStates(startAt = 0, limit = 100): Promise<IState[]> {
 
 
 export async function getStateMembers(stateUuid: string): Promise<IStateMember[]> {
-    const sql = db().prepare('SELECT * FROM state_members WHERE state_uuid = ?')
-    const members = await sql.all(stateUuid) as IStateMember[]
+    const pool = useMySQL('states')
+
+    // DEPRECATED:
+    // const sql = db().prepare('SELECT * FROM state_members WHERE state_uuid = ?')
+    // const members = await sql.all(stateUuid) as IStateMember[]
+
+    const sql = 'SELECT * FROM state_members WHERE state_uuid = ?'
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [stateUuid])
+    const members = rows as IStateMember[]
 
     if (!members || members.length === 0) {
         throw createError({
@@ -501,6 +550,7 @@ export async function getStateMembers(stateUuid: string): Promise<IStateMember[]
 
     return members
 }
+
 
 export async function approveState(stateUuid: string, adminUuid: string): Promise<void> {
     if (!await isUserAdmin(adminUuid)) {
@@ -516,10 +566,16 @@ export async function approveState(stateUuid: string, adminUuid: string): Promis
         throw e;
     }
 
-    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
-    const req = await sql.run(StateStatus.ACTIVE, Date.now(), stateUuid)
+    const pool = useMySQL('states')
 
-    if (!req.success) {
+    // DEPRECATED:
+    // const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    // const req = await sql.run(StateStatus.ACTIVE, Date.now(), stateUuid)
+
+    const sql = 'UPDATE states SET status = ?, updated = ? WHERE uuid = ?'
+    const [result] = await pool.execute<ResultSetHeader>(sql, [StateStatus.ACTIVE, Date.now(), stateUuid])
+
+    if (result.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to approve state',
@@ -527,7 +583,6 @@ export async function approveState(stateUuid: string, adminUuid: string): Promis
         })
     }
 
-    //create history event
     const historyEvent: IHistoryEvent = {
         uuid: uuidv4(),
         created: Date.now(),
@@ -549,10 +604,9 @@ export async function approveState(stateUuid: string, adminUuid: string): Promis
     }
 
     addHistoryEvent(historyEvent)
-
     return;
-
 }
+
 
 
 export async function rejectState(stateUuid: string, adminUuid: string): Promise<void> {
@@ -569,10 +623,16 @@ export async function rejectState(stateUuid: string, adminUuid: string): Promise
         throw e;
     }
 
-    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
-    const req = await sql.run(StateStatus.REJECTED, Date.now(), stateUuid)
+    const pool = useMySQL('states')
 
-    if (!req.success) {
+    // DEPRECATED:
+    // const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    // const req = await sql.run(StateStatus.REJECTED, Date.now(), stateUuid)
+
+    const sql = 'UPDATE states SET status = ?, updated = ? WHERE uuid = ?'
+    const [res] = await pool.execute<ResultSetHeader>(sql, [StateStatus.REJECTED, Date.now(), stateUuid])
+
+    if (res.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to reject state',
@@ -580,7 +640,6 @@ export async function rejectState(stateUuid: string, adminUuid: string): Promise
         })
     }
 
-    //create history event
     const historyEvent: IHistoryEvent = {
         uuid: uuidv4(),
         created: Date.now(),
@@ -602,9 +661,9 @@ export async function rejectState(stateUuid: string, adminUuid: string): Promise
     }
 
     addHistoryEvent(historyEvent)
-
     return;
 }
+
 
 export async function deleteState(stateUuid: string, adminUuid: string): Promise<void> {
     if (!await isUserAdmin(adminUuid)) {
@@ -614,57 +673,91 @@ export async function deleteState(stateUuid: string, adminUuid: string): Promise
             data: { statusMessageRu: 'Недостаточно прав' }
         })
     }
+
     const state = await getStateByUuid(stateUuid)
+
     if (state.flag_link && !state.flag_link.startsWith('http')) {
         const { uploadDir = './uploads' } = useRuntimeConfig()
         const flagsRoot = join(uploadDir, 'flags')
-        await fsp.rm(join(uploadDir, state.flag_link), { force: true })  // игнорировать отсутствие файла :contentReference[oaicite:3]{index=3}
+        await fsp.rm(join(uploadDir, state.flag_link), { force: true })
         await removeEmptyDirs(flagsRoot)
     }
-    const del1 = await db().prepare('DELETE FROM states WHERE uuid=?').run(stateUuid)
-    if (!del1.success) {
-        throw createError({ statusCode: 500, statusMessage: 'Failed to delete state', data: { statusMessageRu: 'Не удалось удалить государство' } })
+
+    const pool = useMySQL('states')
+
+    // DEPRECATED:
+    // const del1 = await db().prepare('DELETE FROM states WHERE uuid=?').run(stateUuid)
+    const sql1 = 'DELETE FROM states WHERE uuid = ?'
+    const [res1] = await pool.execute<ResultSetHeader>(sql1, [stateUuid])
+
+    if (res1.affectedRows === 0) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to delete state',
+            data: { statusMessageRu: 'Не удалось удалить государство' }
+        })
     }
 
+    // DEPRECATED:
+    // const del2 = await db().prepare(`
+    // DELETE FROM history_events
+    // WHERE JSON_LENGTH(state_uuids)=1
+    //   AND JSON_UNQUOTE(JSON_EXTRACT(state_uuids,'$[0]'))=?
+    // `).run(stateUuid)
 
-    // remove all events from history where stateUuid is only one in state_uuids
-    const del2 = await db().prepare(`
-    DELETE FROM history_events
-    WHERE JSON_LENGTH(state_uuids)=1
-      AND JSON_UNQUOTE(JSON_EXTRACT(state_uuids,'$[0]'))=?
-  `).run(stateUuid)
-    if (!del2.success) {
-        throw createError({ statusCode: 500, statusMessage: 'Failed to delete history events', data: { statusMessageRu: 'Не удалось удалить события истории' } })
+    const sql2 = `
+        DELETE FROM history_events
+        WHERE JSON_LENGTH(state_uuids) = 1
+          AND JSON_UNQUOTE(JSON_EXTRACT(state_uuids, '$[0]')) = ?`
+    const [res2] = await pool.execute<ResultSetHeader>(sql2, [stateUuid])
+
+    if (res2.affectedRows === 0) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Failed to delete history events',
+            data: { statusMessageRu: 'Не удалось удалить события истории' }
+        })
     }
 
     return
 }
 
+
 export async function denonceState(stateUuid: string, playerUuid: string): Promise<void> {
-    if (!await isUserAdmin(playerUuid) && !(await isPlayerInState(playerUuid, stateUuid) && await getStateMemberRole(stateUuid, playerUuid) == RolesInState.RULER)) {
+    if (
+        !await isUserAdmin(playerUuid) &&
+        !(await isPlayerInState(playerUuid, stateUuid) &&
+            await getStateMemberRole(stateUuid, playerUuid) === RolesInState.RULER)
+    ) {
         throw createError({
             statusCode: 403,
             statusMessage: 'Forbidden',
             data: { statusMessageRu: 'Недостаточно прав' }
         })
     }
+
     try {
         await getStateByUuid(stateUuid)
     } catch (e) {
-        throw e;
+        throw e
     }
 
-    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
-    const req = await sql.run(StateStatus.DISSOLVED, Date.now(), stateUuid)
+    const pool = useMySQL('states')
 
-    if (!req.success) {
+    // DEPRECATED:
+    // const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    // const req = await sql.run(StateStatus.DISSOLVED, Date.now(), stateUuid)
+
+    const sql = 'UPDATE states SET status = ?, updated = ? WHERE uuid = ?'
+    const [res] = await pool.execute<ResultSetHeader>(sql, [StateStatus.DISSOLVED, Date.now(), stateUuid])
+
+    if (res.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to denounce state',
             data: { statusMessageRu: 'Не удалось денонсировать государство' }
         })
     } else {
-        // create history event
         const historyEvent: IHistoryEvent = {
             uuid: uuidv4(),
             created: Date.now(),
@@ -687,34 +780,45 @@ export async function denonceState(stateUuid: string, playerUuid: string): Promi
         await addHistoryEvent(historyEvent)
     }
 
-    return;
+    return
 }
 
-export async function reanonceState(stateUuid: string, playerUuid: string): Promise<void>{
-    if (!await isUserAdmin(playerUuid) && !(await isPlayerInState(playerUuid, stateUuid) && await getStateMemberRole(stateUuid, playerUuid) == RolesInState.RULER)) {
+
+export async function reanonceState(stateUuid: string, playerUuid: string): Promise<void> {
+    if (
+        !await isUserAdmin(playerUuid) &&
+        !(await isPlayerInState(playerUuid, stateUuid) &&
+            await getStateMemberRole(stateUuid, playerUuid) === RolesInState.RULER)
+    ) {
         throw createError({
             statusCode: 403,
             statusMessage: 'Forbidden',
             data: { statusMessageRu: 'Недостаточно прав' }
         })
     }
+
     try {
         await getStateByUuid(stateUuid)
     } catch (e) {
-        throw e;
+        throw e
     }
 
-    const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
-    const req = await sql.run(StateStatus.ACTIVE, Date.now(), stateUuid)
+    const pool = useMySQL('states')
 
-    if (!req.success) {
+    // DEPRECATED:
+    // const sql = db().prepare('UPDATE states SET status = ?, updated = ? WHERE uuid = ?')
+    // const req = await sql.run(StateStatus.ACTIVE, Date.now(), stateUuid)
+
+    const sql = 'UPDATE states SET status = ?, updated = ? WHERE uuid = ?'
+    const [res] = await pool.execute<ResultSetHeader>(sql, [StateStatus.ACTIVE, Date.now(), stateUuid])
+
+    if (res.affectedRows === 0) {
         throw createError({
             statusCode: 500,
             statusMessage: 'Failed to denounce state',
             data: { statusMessageRu: 'Не удалось денонсировать государство' }
         })
     } else {
-        // create history event
         const historyEvent: IHistoryEvent = {
             uuid: uuidv4(),
             created: Date.now(),
@@ -737,7 +841,8 @@ export async function reanonceState(stateUuid: string, playerUuid: string): Prom
         await addHistoryEvent(historyEvent)
     }
 
-    return;
+    return
 }
+
 
 
