@@ -87,15 +87,38 @@ export async function saveSkin(
 }
 
 /**
- * Извлечь «голову» из скина (8×8 px) и масштабировать до outSize×outSize
+ * Извлекает голову персонажа Minecraft (базовый слой + оверлей) из полного скина и возвращает её в виде PNG-буфера.
+ * Сначала параллельно извлекаются оба слоя в исходном разрешении,
+ * затем они объединяются, а результат масштабируется до нужного размера.
+ * @param {Buffer} skinBuf - Буфер полного изображения скина (64×64 или 64×32).
+ * @param {number} outSize - Размер выходного изображения по ширине и высоте в пикселях (по умолчанию 1024).
+ * @returns {Promise<Buffer>} - Promise, который резолвится PNG-буфером с головой.
  */
 export async function extractHead(
-    skinBuf: Buffer,
-    outSize = 1024
+  skinBuf: Buffer,
+  outSize: number = 1024
 ): Promise<Buffer> {
-    return sharp(skinBuf)
-        .extract({ left: 8, top: 8, width: 8, height: 8 })
-        .resize(outSize, outSize, { kernel: sharp.kernel.nearest })
-        .png()
-        .toBuffer()
+  // Области для базового слоя головы и оверлея (каждая 8×8 пикселей)
+  const baseRegion: sharp.Region = { left: 8, top: 8, width: 8, height: 8 };
+  const overlayRegion: sharp.Region = { left: 40, top: 8, width: 8, height: 8 };
+
+  try {
+    // Параллельно извлекаем базовый слой и оверлей
+    const [baseBuf, overlayBuf] = await Promise.all([
+      sharp(skinBuf).extract(baseRegion).png().toBuffer(),
+      sharp(skinBuf).extract(overlayRegion).png().toBuffer(),
+    ]);
+
+    // Объединяем оверлей поверх базового слоя и масштабируем до нужного размера
+    const headBuf = await sharp(baseBuf)
+      .composite([{ input: overlayBuf }])
+      .resize(outSize, outSize, { kernel: sharp.kernel.nearest })
+      .png()
+      .toBuffer();
+
+    return headBuf;
+  } catch (err) {
+    // При любой ошибке пробрасываем дальше
+    throw err;
+  }
 }
