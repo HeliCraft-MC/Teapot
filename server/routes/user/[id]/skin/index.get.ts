@@ -46,6 +46,7 @@ export default defineEventHandler(async (event) => {
 
     event.node.res.setHeader('Content-Length', buf.length.toString())
     event.node.res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    event.node.res.setHeader('Content-Type', 'image/png')
 
 
 
