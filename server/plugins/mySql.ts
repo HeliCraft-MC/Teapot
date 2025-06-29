@@ -35,6 +35,8 @@ export default defineNitroPlugin((nitro) => {
                 keepAliveInitialDelay: 0,
             });
 
+            console.log("config[connection].options.user: "+config[connection].options.user);
+
             console.log(`[MySQL Plugin] Connection ${connection} initialized.`);
         } catch (err) {
             console.error(`[MySQL Plugin] Error initializing connection ${connection}:`, err);
