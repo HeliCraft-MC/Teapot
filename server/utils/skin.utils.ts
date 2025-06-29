@@ -110,8 +110,9 @@ export async function extractHead(
     ]);
 
     // Объединяем оверлей поверх базового слоя и масштабируем до нужного размера
+    const overlay2Buf = await sharp(overlayBuf).resize(outSize, outSize, { kernel: sharp.kernel.nearest }).png().toBuffer();
     const headBuf = await sharp(baseBuf)
-      .composite([{ input: overlayBuf }])
+      .composite([{ input: overlay2Buf }])
       .resize(outSize, outSize, { kernel: sharp.kernel.nearest })
       .png()
       .toBuffer();
