@@ -1,6 +1,9 @@
 //https://nitro.unjs.io/config
 import dotenv from 'dotenv'
-dotenv.config()
+import path from 'path';
+
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 export default defineNitroConfig({
     srcDir: "server",
     experimental: {
