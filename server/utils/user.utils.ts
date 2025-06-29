@@ -151,7 +151,7 @@ export async function getUserByNickname(nickname: string): Promise<AuthUser> {
     throw createError({
       statusCode: 500,
       statusMessage: 'Database error',
-      data: { statusMessageRu: 'Ошибка базы данных', error: e.message }
+      data: { statusMessageRu: 'Ошибка базы данных', error: e.message+' '+process.env.MYSQL_DATABASE }
     });
   }
 
