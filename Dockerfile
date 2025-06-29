@@ -26,7 +26,7 @@ COPY . .
 
 # Аргумент сборки для передачи хеша коммита.
 # Пример запуска: docker build --build-arg NODE_COMMIT_TEAPOT=$(git rev-parse HEAD) -t my-app .
-ARG NODE_COMMIT_TEAPOT=unknow
+ARG NODE_COMMIT_TEAPOT
 ENV NODE_COMMIT_TEAPOT=${NODE_COMMIT_TEAPOT}
 
 ARG ENVIR
