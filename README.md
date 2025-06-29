@@ -1,4 +1,4 @@
-![Logo](https://github.com/HeliCraft-MC/Vesper/blob/master/public/heliLogo0wWText.png)
+![Logo](https://github.com/HeliCraft-MC/Vesper/blob/master/public/cover.png)
 
 
 # HeliCraft Teapot
