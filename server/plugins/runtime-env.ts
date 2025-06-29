@@ -7,7 +7,7 @@ export default defineNitroPlugin(() => {
   const config = useRuntimeConfig()
 
   // Общие переменные
-  //config.teapotCommit = process.env.NODE_COMMIT || config.teapotCommit
+  config.teapotCommit = process.env.NODE_COMMIT || config.teapotCommit
   config.jwtSecret = process.env.JWT_SECRET || config.jwtSecret
   config.uploads = process.env.UPLOAD_DIR || config.uploads
   config.sqliteSkinPath = process.env.SQLITE_PATH || config.sqliteSkinPath
