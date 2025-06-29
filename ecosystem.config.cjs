@@ -10,7 +10,6 @@ module.exports = {
             instances: '2',
             script: './.output/server/index.mjs',
             env: {
-                ...process.env,
                 NODE_ENV: 'production',
                 PORT: 3300,
 
