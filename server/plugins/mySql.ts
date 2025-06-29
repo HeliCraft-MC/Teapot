@@ -36,6 +36,7 @@ export default defineNitroPlugin((nitro) => {
             });
 
             console.log("config[connection].options.user: "+config[connection].options.user);
+            console.log(__dirname, process.env.MYSQL_USER);
 
             console.log(`[MySQL Plugin] Connection ${connection} initialized.`);
         } catch (err) {

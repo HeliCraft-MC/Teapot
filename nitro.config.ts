@@ -3,7 +3,6 @@ import dotenv from 'dotenv'
 import path from 'path';
 
 dotenv.config({ path: path.join(__dirname, '.env') });
-console.log(__dirname, process.env.MYSQL_USER);
 
 export default defineNitroConfig({
     srcDir: "server",
