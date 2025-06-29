@@ -25,9 +25,9 @@ RUN npm install
 COPY . .
 
 # Аргумент сборки для передачи хеша коммита.
-# Пример запуска: docker build --build-arg NODE_COMMIT=$(git rev-parse HEAD) -t my-app .
-ARG NODE_COMMIT=unknown
-ENV NODE_COMMIT=${NODE_COMMIT}
+# Пример запуска: docker build --build-arg NODE_COMMIT_TEAPOT=$(git rev-parse HEAD) -t my-app .
+ARG NODE_COMMIT_TEAPOT=unknow
+ENV NODE_COMMIT_TEAPOT=${NODE_COMMIT_TEAPOT}
 
 ARG ENVIR
 RUN echo "$ENVIR" > /app/.env
