@@ -29,6 +29,9 @@ COPY . .
 ARG NODE_COMMIT=unknown
 ENV NODE_COMMIT=${NODE_COMMIT}
 
+RUN --mount=type=secret,id=external-env,target=/tmp/env \
+    cp /tmp/env /app/.env
+
 # Запускаем скрипт сборки. Nitro создаст папку .output/
 RUN npm run build
 
