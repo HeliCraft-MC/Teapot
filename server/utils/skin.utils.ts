@@ -94,36 +94,31 @@ export async function saveSkin(
  * @param {number} outSize - Размер выходного изображения по ширине и высоте в пикселях (по умолчанию 1024).
  * @returns {Promise<Buffer>} - Promise, который резолвится PNG-буфером с головой.
  */
-export function extractHead(
+export async function extractHead(
   skinBuf: Buffer,
   outSize: number = 1024
 ): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-        // Области для базового слоя головы и оверлея (каждая 8×8 пикселей)
-        const baseRegion: sharp.Region = { left: 8, top: 8, width: 8, height: 8 };
-        const overlayRegion: sharp.Region = { left: 40, top: 8, width: 8, height: 8 };
+  // Области для базового слоя головы и оверлея (каждая 8×8 пикселей)
+  const baseRegion: sharp.Region = { left: 8, top: 8, width: 8, height: 8 };
+  const overlayRegion: sharp.Region = { left: 40, top: 8, width: 8, height: 8 };
 
-        // Промисы для одновременного извлечения базового слоя и оверлея
-        const basePromise = sharp(skinBuf)
-          .extract(baseRegion)
-          .png()
-          .toBuffer();
-        const overlayPromise = sharp(skinBuf)
-          .extract(overlayRegion)
-          .png()
-          .toBuffer();
+  try {
+    // Параллельно извлекаем базовый слой и оверлей
+    const [baseBuf, overlayBuf] = await Promise.all([
+      sharp(skinBuf).extract(baseRegion).png().toBuffer(),
+      sharp(skinBuf).extract(overlayRegion).png().toBuffer(),
+    ]);
 
-        // Запускаем оба извлечения параллельно
-        Promise.all([basePromise, overlayPromise])
-          .then(([baseBuf, overlayBuf]) => {
-              // Объединяем оверлей поверх базового слоя в исходном разрешении
-              return sharp(baseBuf)
-                .composite([{ input: overlayBuf }])
-                .resize(outSize, outSize, { kernel: sharp.kernel.nearest })
-                .png()
-                .toBuffer();
-          })
-          .then(resolve)
-          .catch(reject);
-    });
+    // Объединяем оверлей поверх базового слоя и масштабируем до нужного размера
+    const headBuf = await sharp(baseBuf)
+      .composite([{ input: overlayBuf }])
+      .resize(outSize, outSize, { kernel: sharp.kernel.nearest })
+      .png()
+      .toBuffer();
+
+    return headBuf;
+  } catch (err) {
+    // При любой ошибке пробрасываем дальше
+    throw err;
+  }
 }
