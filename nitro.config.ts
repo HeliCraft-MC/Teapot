@@ -29,6 +29,9 @@ export default defineNitroConfig({
         uploads: process.env.UPLOAD_DIR,
         sqliteSkinPath: process.env.SQLITE_PATH,
         databaseDebug: Boolean(process.env.DATABASE_DEBUG) || false,
+        telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+        telegramChatId: process.env.TELEGRAM_CHAT_ID,
+        publicApiUrl: process.env.PUBLIC_API_URL,
         database: {
             default: {
                 options: {
