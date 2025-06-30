@@ -4,31 +4,29 @@ import fetch from 'node-fetch';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const FormData = require('form-data');
 import { Buffer } from 'node:buffer';
+import { useRuntimeConfig } from '#imports';
 
-/**
- * Для корректной работы process.env требуется @types/node и соответствующая настройка tsconfig.json
- */
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
-if (!TELEGRAM_BOT_TOKEN) {
-  throw new Error('TELEGRAM_BOT_TOKEN is not set in environment variables');
+function getTelegramConfig() {
+  const config = useRuntimeConfig();
+  const TELEGRAM_BOT_TOKEN = config.telegramBotToken || config.TELEGRAM_BOT_TOKEN;
+  const TELEGRAM_CHAT_ID = config.telegramChatId || config.TELEGRAM_CHAT_ID;
+  const PUBLIC_API_URL = config.publicApiUrl || config.PUBLIC_API_URL;
+  if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is not set in runtimeConfig');
+  if (!TELEGRAM_CHAT_ID) throw new Error('TELEGRAM_CHAT_ID is not set in runtimeConfig');
+  return { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PUBLIC_API_URL };
 }
-if (!TELEGRAM_CHAT_ID) {
-  throw new Error('TELEGRAM_CHAT_ID is not set in environment variables');
-}
-
-const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
 /**
  * Универсальная функция отправки сообщения в Telegram
  * @param message Текст сообщения
- * @param chatId ID чата (по умолчанию из env)
+ * @param chatId ID чата (по умолчанию из runtimeConfig)
  */
-export async function sendMessage(message: string, chatId: string = TELEGRAM_CHAT_ID): Promise<void> {
+export async function sendMessage(message: string, chatId?: string): Promise<void> {
+  const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = getTelegramConfig();
+  const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
   const url = `${TELEGRAM_API_URL}/sendMessage`;
   const body = {
-    chat_id: chatId,
+    chat_id: chatId || TELEGRAM_CHAT_ID,
     text: message,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
@@ -48,9 +46,11 @@ export async function sendMessage(message: string, chatId: string = TELEGRAM_CHA
  * Универсальная функция отправки фото в Telegram
  * @param photoUrlOrBuffer Ссылка на фото или Buffer
  * @param caption Подпись (опционально)
- * @param chatId ID чата (по умолчанию из env)
+ * @param chatId ID чата (по умолчанию из runtimeConfig)
  */
-export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: string, chatId: string = TELEGRAM_CHAT_ID): Promise<void> {
+export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: string, chatId?: string): Promise<void> {
+  const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = getTelegramConfig();
+  const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
   const url = `${TELEGRAM_API_URL}/sendPhoto`;
   let body: any;
   let headers: any = {};
@@ -58,7 +58,7 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
   if (typeof photoUrlOrBuffer === 'string') {
     // Ссылка на фото
     body = {
-      chat_id: chatId,
+      chat_id: chatId || TELEGRAM_CHAT_ID,
       photo: photoUrlOrBuffer,
       caption,
       parse_mode: 'HTML',
@@ -69,7 +69,7 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
   } else {
     // Buffer (файл)
     const form = new FormData();
-    form.append('chat_id', chatId);
+    form.append('chat_id', chatId || TELEGRAM_CHAT_ID);
     form.append('photo', photoUrlOrBuffer, 'skin.png');
     if (caption) form.append('caption', caption);
     form.append('parse_mode', 'HTML');
@@ -94,10 +94,9 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
  * @param skinPath Путь к скину (относительный)
  */
 export async function notifySkinChange(playerName: string, skinPath: string): Promise<void> {
-  // Ссылка на скин через API
-  const skinUrl = `${process.env.PUBLIC_API_URL || ''}/user/${encodeURIComponent(playerName)}/skin`;
+  const { PUBLIC_API_URL } = getTelegramConfig();
+  const skinUrl = `${PUBLIC_API_URL || ''}/user/${encodeURIComponent(playerName)}/skin`;
   const caption = `🧑‍🎨 <b>Игрок</b> <code>${playerName}</code> сменил скин\n<a href=\"${skinUrl}\">Скачать скин</a>`;
-  // Отправляем фото по ссылке (Telegram сам сожмёт превью)
   await sendPhoto(skinUrl, caption);
 }
 
