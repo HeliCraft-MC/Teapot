@@ -84,6 +84,3 @@ npm run dev
 - **Nitro** (and other unJS packages) - A modern, fast, and lightweight Node.js framework for building web applications.
 - **MySQL 2** - A MySQL client for Node.js, providing a simple and efficient way to interact with MySQL databases.
 - **Better SQLite 3** - A SQLite client for Node.js, offering a powerful and easy-to-use interface for working with SQLite databases.
-
-
-PR
