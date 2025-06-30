@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import fetch from 'node-fetch';
+import { $fetch } from 'ofetch';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const FormData = require('form-data');
 import { Buffer } from 'node:buffer';
@@ -31,14 +31,14 @@ export async function sendMessage(message: string, chatId?: string): Promise<voi
     parse_mode: 'HTML',
     disable_web_page_preview: true,
   };
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const error = await res.text();
-    throw new Error(`Telegram API error: ${error}`);
+  try {
+    await $fetch(url, {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e: any) {
+    throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
   }
 }
 
@@ -65,7 +65,15 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
       disable_notification: false,
     };
     headers['Content-Type'] = 'application/json';
-    body = JSON.stringify(body);
+    try {
+      await $fetch(url, {
+        method: 'POST',
+        body,
+        headers,
+      });
+    } catch (e: any) {
+      throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
+    }
   } else {
     // Buffer (файл)
     const form = new FormData();
@@ -75,16 +83,15 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
     form.append('parse_mode', 'HTML');
     body = form;
     headers = form.getHeaders();
-  }
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body,
-  });
-  if (!res.ok) {
-    const error = await res.text();
-    throw new Error(`Telegram API error: ${error}`);
+    try {
+      await $fetch(url, {
+        method: 'POST',
+        body,
+        headers,
+      });
+    } catch (e: any) {
+      throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
+    }
   }
 }
 

@@ -1,6 +1,7 @@
 import { fileTypeFromBuffer } from 'file-type'
 import sharp from 'sharp'
 import type { H3Event } from 'h3'
+import { notifySkinChange } from '~/utils/telegram.utils'
 
 defineRouteMeta({
     openAPI: {
@@ -87,9 +88,7 @@ export default defineEventHandler(async (event: H3Event) => {
     // Получаем никнейм игрока для уведомления
     const user = await getUserByUUID(uuid)
     // Логгируем смену скина в Telegram
-    import('~/utils/telegram.utils').then(({ notifySkinChange }) => {
-        notifySkinChange(user.NICKNAME, meta.path).catch(() => {})
-    })
+    await notifySkinChange(user.NICKNAME, meta.path)
 
     // Триггер обновления скина в игре (не ждём ответа)
     import('ofetch').then(({ $fetch }) =>
