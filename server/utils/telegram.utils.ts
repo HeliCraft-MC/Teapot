@@ -101,7 +101,9 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
  */
 export async function notifySkinChange(playerName: string, skinPath: string): Promise<void> {
   const { PUBLIC_API_URL } = getTelegramConfig();
-  const skinUrl = `${PUBLIC_API_URL || ''}/user/${encodeURIComponent(playerName)}/skin`;
+  // Добавляем v=рандомнаяСтрока для предотвращения кеширования
+  const randomString = Math.random().toString(36).substring(2, 10);
+  const skinUrl = `${PUBLIC_API_URL || ''}/user/${encodeURIComponent(playerName)}/skin?v=${randomString}`;
   const caption = `🧑‍🎨 <b>Игрок</b> <code>${playerName}</code> сменил скин\n<a href=\"${skinUrl}\">Скачать скин</a>`;
   await sendPhoto(skinUrl, caption);
 }
