@@ -87,8 +87,8 @@ export default defineEventHandler(async (event: H3Event) => {
 
     // Получаем никнейм игрока для уведомления
     const user = await getUserByUUID(uuid)
-    // Логгируем смену скина в Telegram
-    await notifySkinChange(user.NICKNAME, meta.path)
+    // Логгируем смену скина в Telegram (fire-and-forget)
+    notifySkinChange(user.NICKNAME, meta.path).catch((e) => console.error('Telegram notify error:', e))
 
     // Триггер обновления скина в игре (не ждём ответа)
     import('ofetch').then(({ $fetch }) =>
