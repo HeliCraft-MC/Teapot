@@ -4,6 +4,7 @@ import { $fetch } from 'ofetch';
 import * as FormData from 'form-data';
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
+import { readFile } from 'fs/promises';
 
 function getTelegramConfig() {
   const config = useRuntimeConfig();
@@ -100,12 +101,10 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
  * @param skinPath Путь к скину (относительный)
  */
 export async function notifySkinChange(playerName: string, skinPath: string): Promise<void> {
-  const { PUBLIC_API_URL } = getTelegramConfig();
-  // Добавляем v=рандомнаяСтрока для предотвращения кеширования
-  const randomString = Math.random().toString(36).substring(2, 10);
-  const skinUrl = `${PUBLIC_API_URL || ''}/user/${encodeURIComponent(playerName)}/skin?v=${randomString}`;
-  const caption = `🧑‍🎨 <b>Игрок</b> <code>${playerName}</code> сменил скин\n<a href=\"${skinUrl}\">Скачать скин</a>`;
-  await sendPhoto(skinUrl, caption);
+  // Читаем файл скина как Buffer
+  const skinBuffer = await readFile(skinPath);
+  const caption = `🧑‍🎨 <b>Игрок</b> <code>${playerName}</code> сменил скин`;
+  await sendPhoto(skinBuffer, caption);
 }
 
 // В будущем можно добавить notifyAllianceChange, notifyStateChange и т.д. 
