@@ -1,8 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { $fetch } from 'ofetch';
-// @ts-ignore
-const FormData = require('form-data');
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
 
@@ -78,16 +76,14 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
     // Buffer (файл)
     const form = new FormData();
     form.append('chat_id', chatId || TELEGRAM_CHAT_ID);
-    form.append('photo', photoUrlOrBuffer, 'skin.png');
+    form.append('photo', new Blob([photoUrlOrBuffer]), 'skin.png');
     if (caption) form.append('caption', caption);
     form.append('parse_mode', 'HTML');
     body = form;
-    headers = form.getHeaders();
     try {
       await $fetch(url, {
         method: 'POST',
         body,
-        headers,
       });
     } catch (e: any) {
       throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
