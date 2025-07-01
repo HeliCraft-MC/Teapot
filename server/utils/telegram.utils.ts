@@ -1,8 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { $fetch } from 'ofetch';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const FormData = require('form-data');
+import FormData from 'form-data';
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
 
