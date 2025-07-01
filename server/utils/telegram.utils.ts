@@ -4,7 +4,6 @@ import { $fetch } from 'ofetch';
 import * as FormData from 'form-data';
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
-import { readFile } from 'fs/promises';
 
 function getTelegramConfig() {
   const config = useRuntimeConfig();
@@ -98,11 +97,9 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
 /**
  * Уведомление о смене скина: отправляет ссылку и сжатое фото
  * @param playerName Имя игрока
- * @param skinPath Путь к скину (относительный)
+ * @param skinBuffer Buffer скина
  */
-export async function notifySkinChange(playerName: string, skinPath: string): Promise<void> {
-  // Читаем файл скина как Buffer
-  const skinBuffer = await readFile(skinPath);
+export async function notifySkinChange(playerName: string, skinBuffer: Buffer): Promise<void> {
   const caption = `🧑‍🎨 <b>Игрок</b> <code>${playerName}</code> сменил скин`;
   await sendPhoto(skinBuffer, caption);
 }
