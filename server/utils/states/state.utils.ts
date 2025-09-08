@@ -529,7 +529,7 @@ export async function listStates(startAt = 0, limit = 100): Promise<IState[]> {
 export async function listSomeStates(amount = 1): Promise<IState[]> {
     const pool = useMySQL('states');
 
-    const sql = `SELECT * FROM states ORDER BY random() LIMIT ${amount};`;
+    const sql = `SELECT * FROM states ORDER BY RAND() LIMIT ${amount};`;
     const [rows] = await pool.execute<RowDataPacket[]>(sql);
     const states = rows as IState[];
 
