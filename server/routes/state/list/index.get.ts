@@ -1,7 +1,7 @@
 defineRouteMeta({
   openAPI: {
     tags: ['state'],
-    description: 'List states',
+    description: 'List all states',
     parameters: [
       { in: 'query', name: 'startAt', required: false, schema: { type: 'number' } },
       { in: 'query', name: 'limit', required: false, schema: { type: 'number' } }
