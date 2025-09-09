@@ -20,6 +20,7 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/server\/status$/ },
     { pattern: /^\/flags(\/.*)?$/ },
     { pattern: /^\/state\/[^/]+$/, methods: ['GET'] },
+    { pattern: /^\/state\/[^/]+\/some$/, methods: ['GET'] },
     { pattern: /^\/user\/[^/]+$/, methods: ['GET'] }, // /user/UUID
     { pattern: /^\/order\/list(?:\?.*)?$/, methods: ['GET'] },
     { pattern: /^\/warrant\/list(?:\?.*)?$/, methods: ['GET'] },
