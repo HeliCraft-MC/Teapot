@@ -131,10 +131,8 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
-        // При вызове приводим тип к Partial<IState>, чтобы сигнатура совпала.
-        // Это безопасно, т.к. editState сам обрабатывает Buffer в flag_link.
-        const updatedUuid = await editState(preparedStructure as Partial<IState>);
-        return { uuid: updatedUuid };
+        const success = await editState(preparedStructure as Partial<IState>);
+        return success;
     } catch (e) {
         if (e instanceof H3Error || e instanceof Error) {
             throw e;
