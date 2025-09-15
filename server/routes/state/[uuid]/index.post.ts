@@ -11,7 +11,6 @@ defineRouteMeta({
     },
 });
 
-// 👇 Локально расширяем входной тип патча так, чтобы flag_link мог быть string | Buffer | null
 type StatePatchInput = Omit<Partial<IState>, "flag_link"> & {
     flag_link?: string | Buffer | null;
 };
@@ -51,10 +50,9 @@ export default defineEventHandler(async (event) => {
         govForm, // string -> GovernmentForm
         hasElections, // 'true' | 'false'
         telegramLink,
-        allowDualCitezenship, // typo в поле формы -> allow_dual_citizenship
+        allowDualCitezenship,
         freeEntry, // 'true' | 'false'
         freeEntryDesc,
-        // опционально могут прилететь и другие ключи (mapLink, capitalUuid и т. п.)
         mapLink,
         capitalUuid,
         rulerUuid,
@@ -78,16 +76,13 @@ export default defineEventHandler(async (event) => {
     let parsedFreeEntry: boolean | undefined;
 
     if (govForm) {
-        // Здесь предполагается, что на вход пришло валидное строковое значение из enum GovernmentForm
         parsedGovForm = govForm as GovernmentForm;
     }
     if (hasElections !== undefined) parsedHasElections = hasElections === "true";
     if (allowDualCitezenship !== undefined)
         parsedAllowDualCitizenship = allowDualCitezenship === "true";
-    // ✅ фикс: парсим из freeEntry, а не проверяем неинициализированную переменную
     if (freeEntry !== undefined) parsedFreeEntry = freeEntry === "true";
 
-    // Хелпер: если строка есть, но пустая — пишем null (для nullable полей)
     const strOrNull = (v: unknown): string | null | undefined => {
         if (v === undefined) return undefined; // ключ не трогаем
         if (typeof v !== "string") return null;
@@ -95,7 +90,6 @@ export default defineEventHandler(async (event) => {
         return s.length ? s : null;
     };
 
-    // Собираем патч аккуратно, только заданные ключи
     const preparedStructure: StatePatchInput = {};
 
     // Указываем, что редактируем конкретную запись
@@ -104,7 +98,6 @@ export default defineEventHandler(async (event) => {
     if (name !== undefined) preparedStructure.name = name;
     if (description !== undefined) preparedStructure.description = description;
 
-    // color (из формы) -> color_hex в модели
     if (color !== undefined) preparedStructure.color_hex = color;
 
     if (parsedGovForm !== undefined) preparedStructure.gov_form = parsedGovForm;
@@ -131,11 +124,10 @@ export default defineEventHandler(async (event) => {
     if (freeEntryDesc !== undefined)
         preparedStructure.free_entry_description = strOrNull(freeEntryDesc) ?? null;
 
-    // Флаг: кладём Buffer — editState умеет его преобразовывать через flagToUploads
+    // Флаг: кладём Buffer - editState умеет его преобразовывать через flagToUploads
     if (filePart) {
-        // sharp не обязателен, но если ты хочешь нормализовать — оставь:
         const normalizedPng = await sharp(filePart.data).png().toBuffer();
-        preparedStructure.flag_link = normalizedPng; // <- Buffer, тип теперь валиден
+        preparedStructure.flag_link = normalizedPng;
     }
 
     try {
