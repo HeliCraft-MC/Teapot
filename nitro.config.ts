@@ -6,6 +6,9 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 export default defineNitroConfig({
     srcDir: "server",
+    imports: {
+        autoImport: true
+    },
     experimental: {
         asyncContext: true,
         database: false,
