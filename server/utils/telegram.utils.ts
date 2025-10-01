@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { $fetch } from 'ofetch';
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
