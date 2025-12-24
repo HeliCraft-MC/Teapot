@@ -1,4 +1,4 @@
-import { $fetch, type FetchError } from 'ofetch';
+import { $fetch } from 'ofetch';
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
 
@@ -12,8 +12,18 @@ interface SendOptions {
 interface TelegramConfig {
   botToken: string;
   defaultChatId: ChatId;
-  defaultThreadId?: number;
+  defaultThreadId?: number;     // General topic (fallback)
+  skinsThreadId?: number;       // Specific topic for skins
   publicApiUrl?: string;
+}
+
+/**
+ * Helper to parse optional integer from config.
+ */
+function parseTopicId(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const n = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 /**
@@ -24,17 +34,18 @@ function getTelegramConfig(): TelegramConfig {
 
   const botToken = (config.telegramBotToken || config.TELEGRAM_BOT_TOKEN) as string;
   const defaultChatId = (config.telegramChatId || config.TELEGRAM_CHAT_ID) as ChatId;
-
-  // Parse thread ID safely
-  const rawThreadId = (config as any).telegramThreadId ?? (config as any).TELEGRAM_THREAD_ID;
-  const defaultThreadId = rawThreadId ? Number.parseInt(String(rawThreadId), 10) : undefined;
-
   const publicApiUrl = (config.publicApiUrl || config.PUBLIC_API_URL) as string;
+
+  // 1. Default Topic (general)
+  const defaultThreadId = parseTopicId((config as any).telegramThreadId ?? (config as any).TELEGRAM_THREAD_ID);
+
+  // 2. Skins Topic
+  const skinsThreadId = parseTopicId((config as any).telegramTopicSkins ?? (config as any).TELEGRAM_TOPIC_SKINS);
 
   if (!botToken) throw new Error('TELEGRAM_BOT_TOKEN is missing in runtimeConfig');
   if (!defaultChatId) throw new Error('TELEGRAM_CHAT_ID is missing in runtimeConfig');
 
-  return { botToken, defaultChatId, defaultThreadId, publicApiUrl };
+  return { botToken, defaultChatId, defaultThreadId, skinsThreadId, publicApiUrl };
 }
 
 /**
@@ -57,7 +68,7 @@ function getApiUrl(method: string): string {
 }
 
 /**
- * Sends a text message to Telegram using generic options.
+ * Sends a text message to Telegram.
  * @param message - Text to send.
  * @param opts - Target options (chatId, threadId).
  */
@@ -136,12 +147,18 @@ export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: str
 }
 
 /**
- * Notifies about a skin change event.
- * @param playerName - Name of the player.
- * @param skinBuffer - Image buffer of the skin.
- * @param opts - Optional target override.
+ * Notifies about a skin change event (Sends to Skins Topic).
+ * Automatically uses `skinsThreadId` from config unless overridden.
  */
 export async function notifySkinChange(playerName: string, skinBuffer: Buffer, opts?: SendOptions): Promise<void> {
+  const config = getTelegramConfig();
+
+  // 1. Manual `threadId` in opts (highest priority)
+  // 2. Configured `skinsThreadId`
+  // 3. Default `defaultThreadId` (fallback)
+  const targetThreadId = opts?.threadId ?? config.skinsThreadId ?? config.defaultThreadId;
+
   const caption = `🧑‍🎨 <b>Player</b> <code>${playerName}</code> changed skin`;
-  await sendPhoto(skinBuffer, caption, opts);
+
+  await sendPhoto(skinBuffer, caption, { ...opts, threadId: targetThreadId });
 }
