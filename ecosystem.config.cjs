@@ -23,6 +23,12 @@ module.exports = {
                 STATES_MYSQL_PASSWORD: process.env.STATES_MYSQL_PASSWORD,
                 STATES_MYSQL_DATABASE: process.env.STATES_MYSQL_DATABASE,
 
+                BANLIST_MYSQL_HOST: process.env.BANLIST_MYSQL_HOST,
+                BANLIST_MYSQL_PORT: process.env.BANLIST_MYSQL_PORT,
+                BANLIST_MYSQL_USER: process.env.BANLIST_MYSQL_USER,
+                BANLIST_MYSQL_PASSWORD: process.env.BANLIST_MYSQL_PASSWORD,
+                BANLIST_MYSQL_DATABASE: process.env.BANLIST_MYSQL_DATABASE,
+
                 JWT_SECRET: process.env.JWT_SECRET,
                 UPLOAD_DIR: process.env.UPLOAD_DIR,
                 SQLITE_PATH: process.env.SQLITE_PATH,

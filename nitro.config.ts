@@ -55,6 +55,15 @@ export default defineNitroConfig({
                     password: process.env.STATES_MYSQL_PASSWORD,
                     database: process.env.STATES_MYSQL_DATABASE,
                 }
+            },
+            banlist: {
+                options: {
+                    host: process.env.BANLIST_MYSQL_HOST,
+                    port: Number(process.env.BANLIST_MYSQL_PORT),
+                    user: process.env.BANLIST_MYSQL_USER,
+                    password: process.env.BANLIST_MYSQL_PASSWORD,
+                    database: process.env.BANLIST_MYSQL_DATABASE,
+                }
             }
         },
     }
