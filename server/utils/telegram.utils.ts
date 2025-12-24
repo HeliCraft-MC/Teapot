@@ -73,6 +73,7 @@ function getApiUrl(method: string): string {
  * @param opts - Target options (chatId, threadId).
  */
 export async function sendMessage(message: string, opts?: SendOptions): Promise<void>;
+export async function sendMessage(message: string, chatId: ChatId, threadId?: number): Promise<void>;
 export async function sendMessage(message: string, chatIdOrOpts?: ChatId | SendOptions, threadId?: number): Promise<void> {
   const url = getApiUrl('sendMessage');
 
