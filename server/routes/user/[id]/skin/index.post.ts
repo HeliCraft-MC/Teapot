@@ -93,7 +93,7 @@ export default defineEventHandler(async (event: H3Event) => {
     // Триггер обновления скина в игре (не ждём ответа)
     import('ofetch').then(({ $fetch }) =>
         $fetch('http://localhost:5122/update', { query: { player: user.NICKNAME }, retry: 0 })
-    ).catch(() => {})
+    ).catch(() => { })
 
     return { ok: true, ...meta }
 })
