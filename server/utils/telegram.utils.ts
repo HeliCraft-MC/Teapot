@@ -1,102 +1,147 @@
-import { $fetch } from 'ofetch';
+import { $fetch, type FetchError } from 'ofetch';
 import { Buffer } from 'node:buffer';
 import { useRuntimeConfig } from '#imports';
 
-function getTelegramConfig() {
-  const config = useRuntimeConfig();
-  const TELEGRAM_BOT_TOKEN = config.telegramBotToken || config.TELEGRAM_BOT_TOKEN;
-  const TELEGRAM_CHAT_ID = config.telegramChatId || config.TELEGRAM_CHAT_ID;
-  const PUBLIC_API_URL = config.publicApiUrl || config.PUBLIC_API_URL;
-  if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is not set in runtimeConfig');
-  if (!TELEGRAM_CHAT_ID) throw new Error('TELEGRAM_CHAT_ID is not set in runtimeConfig');
-  return { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, PUBLIC_API_URL };
+type ChatId = string | number;
+
+interface SendOptions {
+  chatId?: ChatId;
+  threadId?: number; // message_thread_id
+}
+
+interface TelegramConfig {
+  botToken: string;
+  defaultChatId: ChatId;
+  defaultThreadId?: number;
+  publicApiUrl?: string;
 }
 
 /**
- * Универсальная функция отправки сообщения в Telegram
- * @param message Текст сообщения
- * @param chatId ID чата (по умолчанию из runtimeConfig)
+ * Retrieves Telegram configuration from runtime config.
  */
-export async function sendMessage(message: string, chatId?: string): Promise<void> {
-  const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = getTelegramConfig();
-  const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
-  const url = `${TELEGRAM_API_URL}/sendMessage`;
+function getTelegramConfig(): TelegramConfig {
+  const config = useRuntimeConfig();
+
+  const botToken = (config.telegramBotToken || config.TELEGRAM_BOT_TOKEN) as string;
+  const defaultChatId = (config.telegramChatId || config.TELEGRAM_CHAT_ID) as ChatId;
+
+  // Parse thread ID safely
+  const rawThreadId = (config as any).telegramThreadId ?? (config as any).TELEGRAM_THREAD_ID;
+  const defaultThreadId = rawThreadId ? Number.parseInt(String(rawThreadId), 10) : undefined;
+
+  const publicApiUrl = (config.publicApiUrl || config.PUBLIC_API_URL) as string;
+
+  if (!botToken) throw new Error('TELEGRAM_BOT_TOKEN is missing in runtimeConfig');
+  if (!defaultChatId) throw new Error('TELEGRAM_CHAT_ID is missing in runtimeConfig');
+
+  return { botToken, defaultChatId, defaultThreadId, publicApiUrl };
+}
+
+/**
+ * Helper to resolve final Chat ID and Thread ID.
+ */
+function getTarget(opts?: SendOptions) {
+  const { defaultChatId, defaultThreadId } = getTelegramConfig();
+  return {
+    chat_id: opts?.chatId ?? defaultChatId,
+    message_thread_id: opts?.threadId ?? defaultThreadId,
+  };
+}
+
+/**
+ * Helper to construct the API URL.
+ */
+function getApiUrl(method: string): string {
+  const { botToken } = getTelegramConfig();
+  return `https://api.telegram.org/bot${botToken}/${method}`;
+}
+
+/**
+ * Sends a text message to Telegram using generic options.
+ * @param message - Text to send.
+ * @param opts - Target options (chatId, threadId).
+ */
+export async function sendMessage(message: string, opts?: SendOptions): Promise<void>;
+export async function sendMessage(message: string, chatIdOrOpts?: ChatId | SendOptions, threadId?: number): Promise<void> {
+  const url = getApiUrl('sendMessage');
+
+  const options = typeof chatIdOrOpts === 'object' ? chatIdOrOpts : { chatId: chatIdOrOpts, threadId };
+  const target = getTarget(options);
+
   const body = {
-    chat_id: chatId || TELEGRAM_CHAT_ID,
+    ...target,
     text: message,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
   };
+
   try {
     await $fetch(url, {
       method: 'POST',
       body,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (e: any) {
-    throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
+  } catch (error: any) {
+    throw new Error(`Telegram API sendMessage error: ${JSON.stringify(error?.data || error?.message)}`);
   }
 }
 
 /**
- * Универсальная функция отправки фото в Telegram
- * @param photoUrlOrBuffer Ссылка на фото или Buffer
- * @param caption Подпись (опционально)
- * @param chatId ID чата (по умолчанию из runtimeConfig)
+ * Sends a photo to Telegram (URL or Buffer).
+ * @param photoUrlOrBuffer - Image URL string or Buffer.
+ * @param caption - Optional caption.
+ * @param opts - Target options (chatId, threadId).
  */
-export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: string, chatId?: string): Promise<void> {
-  const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = getTelegramConfig();
-  const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
-  const url = `${TELEGRAM_API_URL}/sendPhoto`;
-  let body: any;
-  let headers: any = {};
+export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: string, opts?: SendOptions): Promise<void>;
+export async function sendPhoto(photoUrlOrBuffer: string | Buffer, caption?: string, chatIdOrOpts?: ChatId | SendOptions, threadId?: number): Promise<void> {
+  const url = getApiUrl('sendPhoto');
 
-  if (typeof photoUrlOrBuffer === 'string') {
-    // Ссылка на фото
-    body = {
-      chat_id: chatId || TELEGRAM_CHAT_ID,
-      photo: photoUrlOrBuffer,
-      caption,
-      parse_mode: 'HTML',
-      disable_notification: false,
-    };
-    headers['Content-Type'] = 'application/json';
-    try {
+  const options = typeof chatIdOrOpts === 'object' ? chatIdOrOpts : { chatId: chatIdOrOpts, threadId };
+  const target = getTarget(options);
+
+  try {
+    // Case 1: Send by URL
+    if (typeof photoUrlOrBuffer === 'string') {
       await $fetch(url, {
         method: 'POST',
-        body,
-        headers,
+        body: {
+          ...target,
+          photo: photoUrlOrBuffer,
+          caption,
+          parse_mode: 'HTML',
+        },
+        headers: { 'Content-Type': 'application/json' },
       });
-    } catch (e: any) {
-      throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
+      return;
     }
-  } else {
-    // Buffer (файл)
+
+    // Case 2: Send by Buffer (Multipart)
     const form = new FormData();
-    form.append('chat_id', chatId || TELEGRAM_CHAT_ID);
-    form.append('photo', new Blob([photoUrlOrBuffer]), 'skin.png');
+    form.append('chat_id', String(target.chat_id));
+    if (target.message_thread_id) form.append('message_thread_id', String(target.message_thread_id));
+
+    form.append('photo', new Blob([photoUrlOrBuffer as unknown as BlobPart]), 'image.png');
+
     if (caption) form.append('caption', caption);
     form.append('parse_mode', 'HTML');
-    body = form;
-    try {
-      await $fetch(url, {
-        method: 'POST',
-        body,
-      });
-    } catch (e: any) {
-      throw new Error(`Telegram API error: ${e?.data ? JSON.stringify(e.data) : e.message}`);
-    }
+
+    await $fetch(url, {
+      method: 'POST',
+      body: form,
+    });
+
+  } catch (error: any) {
+    throw new Error(`Telegram API sendPhoto error: ${JSON.stringify(error?.data || error?.message)}`);
   }
 }
 
 /**
- * Уведомление о смене скина: отправляет ссылку и сжатое фото
- * @param playerName Имя игрока
- * @param skinBuffer Buffer скина
+ * Notifies about a skin change event.
+ * @param playerName - Name of the player.
+ * @param skinBuffer - Image buffer of the skin.
+ * @param opts - Optional target override.
  */
-export async function notifySkinChange(playerName: string, skinBuffer: Buffer): Promise<void> {
-  const caption = `🧑‍🎨 <b>Игрок</b> <code>${playerName}</code> сменил скин`;
-  await sendPhoto(skinBuffer, caption);
+export async function notifySkinChange(playerName: string, skinBuffer: Buffer, opts?: SendOptions): Promise<void> {
+  const caption = `🧑‍🎨 <b>Player</b> <code>${playerName}</code> changed skin`;
+  await sendPhoto(skinBuffer, caption, opts);
 }
-
-// В будущем можно добавить notifyAllianceChange, notifyStateChange и т.д. 
