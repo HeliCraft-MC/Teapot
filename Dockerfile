@@ -1,74 +1,63 @@
-# Created with Gemini and ChatGPT
+# syntax=docker/dockerfile:1
+
 # =====================================================================================
-# ЭТАП 1: "Сборщик" (Builder)
-# На этом этапе мы устанавливаем ВСЕ зависимости, собираем проект и готовим артефакты.
-# Используем 'bookworm-slim', т.к. он хорошо работает с нативными модулями (bcrypt, sharp)
+# STAGE 1: builder
 # =====================================================================================
 FROM node:20-bookworm-slim AS builder
 
-# Устанавливаем системные пакеты, необходимые для сборки:
-# - build-essential, python3: для компиляции нативных Node.js модулей (bcrypt, sharp)
-# - git: для получения хеша коммита (`git rev-parse HEAD` в вашем build-скрипте)
+# build tools + git (т.к. в твоём build-скрипте есть git rev-parse) + curl/unzip для установки bun
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential python3 git && \
+        build-essential python3 git curl ca-certificates unzip && \
     rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://bun.com/install | bash
+
+ENV BUN_INSTALL=/root/.bun
+ENV PATH=$BUN_INSTALL/bin:$PATH
 
 WORKDIR /app
 
-COPY package*.json ./
+# Копируем манифесты и lockfile отдельно — чтобы кэшировался слой установки зависимостей
+COPY package.json bun.lock ./
+# если у тебя есть .npmrc для приватного registry — раскомментируй
+# COPY .npmrc ./
 
-# Устанавливаем все зависимости (включая dev) из package-lock.json.
-RUN npm install
+# Ставим ВСЕ зависимости (dev нужны для nitropack)
+RUN bun install --frozen-lockfile
 
-# Копируем все остальные файлы проекта в контейнер.
+# Копируем проект
 COPY . .
 
-# Аргумент сборки для передачи хеша коммита.
-# Пример запуска: docker build --build-arg NODE_COMMIT_TEAPOT=$(git rev-parse HEAD) -t my-app .
+# Твои аргументы сборки — оставляем как есть
 ARG NODE_COMMIT_TEAPOT
 ENV NODE_COMMIT_TEAPOT=${NODE_COMMIT_TEAPOT}
 
 ARG ENVIR
-RUN echo "$ENVIR" > /app/.env
+# чуть безопаснее, чем echo (не ломает логику, но меньше сюрпризов с \n)
+RUN printf '%s' "$ENVIR" > /app/.env
 
-# Запускаем скрипт сборки. Nitro создаст папку .output/
-RUN npm run build
+# Сборка (используем bun для запуска скрипта)
+RUN bun run build
 
-# ✨ КЛЮЧЕВОЕ УЛУЧШЕНИЕ: Удаляем dev-зависимости ПОСЛЕ сборки.
-# Это оставляет в node_modules только то, что нужно для работы приложения.
-RUN npm prune --omit=dev
+# Оставляем только production-зависимости (аналог npm prune --omit=dev)
+RUN rm -rf node_modules && bun install --production --frozen-lockfile
 
 # =====================================================================================
-# ЭТАП 2: "Исполнитель" (Runner)
-# Это финальный, легковесный образ, который будет запускаться на сервере.
-# В нем нет ничего лишнего, только скомпилированное приложение и production-зависимости.
+# STAGE 2: runner
 # =====================================================================================
 FROM node:20-bookworm-slim
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
-
-# Устанавливаем окружение для продакшена.
-# PM2 и Nitro будут использовать эту переменную для оптимизаций.
 ENV NODE_ENV=production
 
-# Копируем "очищенные" production-зависимости из сборщика.
-# Это самый эффективный способ: быстро и без доступа к сети.
 COPY --from=builder /app/node_modules ./node_modules
-
-# Копируем собранное приложение из сборщика.
 COPY --from=builder /app/.output ./.output
-
-# Копируем конфигурацию PM2.
+COPY --from=builder /app/.env ./.env
 COPY ecosystem.config.cjs .
 
-# Устанавливаем PM2 глобально. Это небольшая зависимость.
-RUN npm install -g pm2@latest
+RUN npm install -g pm2@latest && npm cache clean --force
 
-# Открываем порт, который слушает ваше приложение
 EXPOSE 3300
 
-# Команда для запуска. `pm2-runtime` — это специальная команда для Docker,
-# которая запускает PM2 в "foreground" режиме, что позволяет Docker управлять процессом.
 CMD ["sh", "-c", "set -a && . ./.env && pm2-runtime ecosystem.config.cjs"]
