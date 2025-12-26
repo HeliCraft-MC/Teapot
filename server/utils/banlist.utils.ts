@@ -1,6 +1,7 @@
 import { useMySQL } from "~/plugins/mySql"; // Путь к твоему плагину
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { BanEntry, CreateBanDto } from "~/interfaces/banlist.types";
+import { deleteSkin } from "./skin.utils";
 
 /**
  * Имя подключения в конфиге. 
@@ -31,9 +32,7 @@ export async function checkActiveBan(uuid: string, ip?: string): Promise<BanEntr
     // Логика:
     // 1. Ищем по UUID или IP
     // 2. Бан должен быть active = 1
-    // 3. Время 'until' должно быть больше текущего (или <= 0, если это перманентный бан в твоей системе)
-    // В примере 'until' это timestamp. Если -1 это пермач, нужно учесть это.
-    // Ниже условие: (until > now OR until <= 0)
+    // 3. Время 'until' должно быть больше текущего (или <= 0, если это перманентный бан)
 
     let sql = `
         SELECT * FROM \`bans\` 
@@ -61,16 +60,33 @@ export async function checkActiveBan(uuid: string, ip?: string): Promise<BanEntr
 }
 
 /**
+ * Проверить, забанен ли пользователь (по UUID).
+ * Возвращает true, если есть активный бан.
+ */
+export async function isUserBanned(uuid: string): Promise<boolean> {
+    const ban = await checkActiveBan(uuid);
+    return !!ban;
+}
+
+
+
+/**
  * Создать новый бан
  */
 export async function createBan(dto: CreateBanDto): Promise<number> {
     const pool = useMySQL(CONNECTION_NAME);
 
     const now = Date.now();
-    // Если duration <= 0, считаем перманентным, иначе now + duration
     const until = dto.durationMs <= 0 ? -1 : (now + dto.durationMs);
 
-    // Подготовка данных
+    // Удаление скина, если бан дольше чем на 30 дней (30 * 24 * 60 * 60 * 1000 = 2592000000 ms)
+    // Или если перманентный (<= 0)
+    if (dto.durationMs > 2592000000 || dto.durationMs <= 0) {
+        deleteSkin(dto.targetUuid).catch(err => {
+            console.error(`[BanUtils] Failed to delete skin for banned user ${dto.targetUuid}:`, err);
+        });
+    }
+
     const cleanTargetUuid = normalizeUuid(dto.targetUuid);
     const cleanAdminUuid = normalizeUuid(dto.adminUuid);
 
