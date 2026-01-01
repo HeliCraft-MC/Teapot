@@ -2,6 +2,7 @@ import { useMySQL } from "~/plugins/mySql"; // Путь к твоему плаг
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 import { BanEntry, CreateBanDto } from "~/interfaces/banlist.types";
 import { deleteSkin } from "./skin.utils";
+import { getUserByUUID } from "./user.utils";
 
 /**
  * Имя подключения в конфиге. 
@@ -19,6 +20,20 @@ function normalizeUuid(raw: string): string {
 }
 
 /* ────────────────────────────── main utils ─────────────────────────────── */
+
+/**
+ * Добавить никнейм пользователя к объекту бана
+ */
+async function enrichBanWithNickname(ban: BanEntry): Promise<BanEntry> {
+    try {
+        const user = await getUserByUUID(ban.uuid);
+        ban.uuid_nickname = user.NICKNAME;
+    } catch (e) {
+        // Если пользователь не найден, оставляем nickname пустым
+        ban.uuid_nickname = undefined;
+    }
+    return ban;
+}
 
 /**
  * Получить активный бан пользователя по UUID или IP.
@@ -49,7 +64,14 @@ export async function checkActiveBan(uuid: string, ip?: string): Promise<BanEntr
 
     try {
         const [rows] = await pool.execute<RowDataPacket[]>(sql, params);
-        return (rows[0] as BanEntry) || null;
+        let ban = (rows[0] as BanEntry) || null;
+
+        // Добавляем никнейм, если бан найден
+        if (ban) {
+            ban = await enrichBanWithNickname(ban);
+        }
+
+        return ban;
     } catch (e: any) {
         throw createError({
             statusCode: 500,
@@ -73,7 +95,7 @@ export async function isUserBanned(uuid: string): Promise<boolean> {
 /**
  * Создать новый бан
  */
-export async function createBan(dto: CreateBanDto): Promise<number> {
+export async function createBan(dto: CreateBanDto): Promise<BanEntry> {
     const pool = useMySQL(CONNECTION_NAME);
 
     const now = Date.now();
@@ -114,7 +136,12 @@ export async function createBan(dto: CreateBanDto): Promise<number> {
 
     try {
         const [result] = await pool.execute<ResultSetHeader>(sql, params);
-        return result.insertId;
+
+        // Получаем созданный бан со всеми данными
+        const banId = result.insertId;
+        const ban = await getBanById(banId);
+
+        return ban;
     } catch (e: any) {
         throw createError({
             statusCode: 500,
@@ -181,7 +208,7 @@ export async function getBanById(id: number): Promise<BanEntry> {
 
     const sql = 'SELECT * FROM `litebans_bans` WHERE `id` = ?';
     const [rows] = await pool.execute<RowDataPacket[]>(sql, [id]);
-    const ban = rows[0] as BanEntry | undefined;
+    let ban = rows[0] as BanEntry | undefined;
 
     if (!ban) {
         throw createError({
@@ -190,6 +217,9 @@ export async function getBanById(id: number): Promise<BanEntry> {
             data: { statusMessageRu: 'Бан не найден' }
         });
     }
+
+    // Добавляем никнейм забаненного пользователя
+    ban = await enrichBanWithNickname(ban);
 
     return ban;
 }
@@ -226,8 +256,13 @@ export async function searchBans(
 
     const [rows] = await pool.execute<RowDataPacket[]>(sql, params);
 
+    let items = rows as BanEntry[];
+
+    // Добавляем никнейм для каждого забаненного пользователя
+    items = await Promise.all(items.map(ban => enrichBanWithNickname(ban)));
+
     return {
-        items: rows as BanEntry[],
+        items,
         total
     };
 }

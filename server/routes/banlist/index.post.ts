@@ -1,4 +1,4 @@
-import { createBan, isUserBanned } from "~/utils/banlist.utils";
+import { createBan } from "~/utils/banlist.utils";
 import { checkAuth } from "~/utils/auth.utils";
 import { resolveUuid, getUserByUUID, isUserAdmin } from "~/utils/user.utils";
 import { CreateBanDto } from "~/interfaces/banlist.types";
@@ -36,7 +36,7 @@ defineRouteMeta({
                             type: 'object',
                             properties: {
                                 success: { type: 'boolean', example: true },
-                                banId: { type: 'integer' }
+                                ban: { $ref: '#/components/schemas/BanEntry' }
                             }
                         }
                     }
@@ -109,6 +109,6 @@ export default defineEventHandler(async (event) => {
 
     return {
         success: true,
-        banId
+        ban: banId
     };
 });

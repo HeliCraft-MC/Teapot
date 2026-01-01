@@ -1,4 +1,4 @@
-import { searchBans } from "~/utils/banlist.utils";
+import {getBanById, searchBans} from "~/utils/banlist.utils";
 
 defineRouteMeta({
     openAPI: {
@@ -8,7 +8,8 @@ defineRouteMeta({
             { name: 'limit', in: 'query', description: 'Количество записей (default 20)', schema: { type: 'integer' } },
             { name: 'offset', in: 'query', description: 'Смещение (default 0)', schema: { type: 'integer' } },
             { name: 'active', in: 'query', description: 'Только активные баны (true/false)', schema: { type: 'boolean' } },
-            { name: 'q', in: 'query', description: 'Поиск по UUID, имени админа или причине', schema: { type: 'string' } }
+            { name: 'q', in: 'query', description: 'Поиск по UUID, имени админа или причине', schema: { type: 'string' } },
+            { name: 'id', in: 'query', description: 'Фильтрация по ID бана', schema: { type: 'integer' } }
         ],
         responses: {
             200: {
@@ -36,6 +37,11 @@ export default defineEventHandler(async (event) => {
     const offset = parseInt(query.offset as string) || 0;
     const activeOnly = query.active === 'true';
     const search = query.q as string | undefined;
+    const id = query.id as string | undefined;
+    if (id) {
+        const result = await getBanById(parseInt(id));
+        return result;
+    }
 
     const result = await searchBans(limit, offset, activeOnly, search);
 

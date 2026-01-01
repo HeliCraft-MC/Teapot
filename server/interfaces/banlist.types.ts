@@ -1,6 +1,7 @@
 export interface BanEntry {
     id: number;
     uuid: string;
+    uuid_nickname?: string; // Добавлен никнейм забаненного пользователя
     ip: string | null;
     reason: string;
     banned_by_uuid: string;
