@@ -35,7 +35,7 @@ export async function checkActiveBan(uuid: string, ip?: string): Promise<BanEntr
     // 3. Время 'until' должно быть больше текущего (или <= 0, если это перманентный бан)
 
     let sql = `
-        SELECT * FROM \`bans\` 
+        SELECT * FROM \`litebans_bans\` 
         WHERE (\`uuid\` = ? ${ip ? 'OR `ip` = ?' : ''})
         AND \`active\` = 1 
         AND (\`until\` > ? OR \`until\` <= 0)
@@ -91,7 +91,7 @@ export async function createBan(dto: CreateBanDto): Promise<number> {
     const cleanAdminUuid = normalizeUuid(dto.adminUuid);
 
     const sql = `
-        INSERT INTO \`bans\` (
+        INSERT INTO \`litebans_bans\` (
             \`uuid\`, \`ip\`, \`reason\`, 
             \`banned_by_uuid\`, \`banned_by_name\`, 
             \`time\`, \`until\`, 
@@ -136,7 +136,7 @@ export async function removeBan(banId: number, adminUuid: string = "[Web]", admi
     const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
 
     const sql = `
-        UPDATE \`bans\` SET 
+        UPDATE \`litebans_bans\` SET 
             \`active\` = 0,
             \`removed_by_uuid\` = ?,
             \`removed_by_name\` = ?,
@@ -179,7 +179,7 @@ export async function removeBan(banId: number, adminUuid: string = "[Web]", admi
 export async function getBanById(id: number): Promise<BanEntry> {
     const pool = useMySQL(CONNECTION_NAME);
 
-    const sql = 'SELECT * FROM `bans` WHERE `id` = ?';
+    const sql = 'SELECT * FROM `litebans_bans` WHERE `id` = ?';
     const [rows] = await pool.execute<RowDataPacket[]>(sql, [id]);
     const ban = rows[0] as BanEntry | undefined;
 
@@ -216,12 +216,12 @@ export async function searchBans(
     }
 
     // Получаем общее количество для пагинации
-    const countSql = `SELECT COUNT(*) as total FROM \`bans\` ${whereClause}`;
+    const countSql = `SELECT COUNT(*) as total FROM \`litebans_bans\` ${whereClause}`;
     const [countRows] = await pool.execute<RowDataPacket[]>(countSql, params);
     const total = countRows[0].total;
 
     // Получаем данные
-    const sql = `SELECT * FROM \`bans\` ${whereClause} ORDER BY \`id\` DESC LIMIT ? OFFSET ?`;
+    const sql = `SELECT * FROM \`litebans_bans\`  ${whereClause} ORDER BY \`id\` DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     const [rows] = await pool.execute<RowDataPacket[]>(sql, params);
