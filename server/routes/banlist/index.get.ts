@@ -1,4 +1,5 @@
 import {getBanById, searchBans} from "~/utils/banlist.utils";
+import { BanEntryPublic } from "~/interfaces/banlist.types";
 
 defineRouteMeta({
     openAPI: {
@@ -39,11 +40,27 @@ export default defineEventHandler(async (event) => {
     const search = query.q as string | undefined;
     const id = query.id as string | undefined;
     if (id) {
-        const result = await getBanById(parseInt(id));
-        return result;
+        const ban = await getBanById(parseInt(id));
+        // Преобразуем в публичный формат (без IP и uuid админа)
+        const publicBan: BanEntryPublic = {
+            id: ban.id,
+            uuid: ban.uuid,
+            uuid_nickname: ban.uuid_nickname,
+            reason: ban.reason,
+            banned_by_name: ban.banned_by_name,
+            removed_by_name: ban.removed_by_name,
+            removed_by_reason: ban.removed_by_reason,
+            removed_by_date: ban.removed_by_date,
+            time: ban.time,
+            until: ban.until,
+            template: ban.template,
+            server_scope: ban.server_scope,
+            silent: ban.silent,
+            ipban: ban.ipban,
+            active: ban.active
+        };
+        return publicBan;
     }
 
-    const result = await searchBans(limit, offset, activeOnly, search);
-
-    return result;
+    return await searchBans(limit, offset, activeOnly, search);
 });

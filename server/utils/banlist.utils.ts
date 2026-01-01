@@ -1,6 +1,6 @@
 import { useMySQL } from "~/plugins/mySql"; // Путь к твоему плагину
 import { ResultSetHeader, RowDataPacket } from "mysql2";
-import { BanEntry, CreateBanDto } from "~/interfaces/banlist.types";
+import { BanEntry, BanEntryPublic, CreateBanDto } from "~/interfaces/banlist.types";
 import { deleteSkin } from "./skin.utils";
 import { getUserByUUID } from "./user.utils";
 
@@ -33,6 +33,30 @@ async function enrichBanWithNickname(ban: BanEntry): Promise<BanEntry> {
         ban.uuid_nickname = undefined;
     }
     return ban;
+}
+
+/**
+ * Преобразовать BanEntry в публичный формат (без персональных данных)
+ * Удаляет IP, banned_by_uuid и другую персональную информацию
+ */
+function toPublicBan(ban: BanEntry): BanEntryPublic {
+    return {
+        id: ban.id,
+        uuid: ban.uuid,
+        uuid_nickname: ban.uuid_nickname,
+        reason: ban.reason,
+        banned_by_name: ban.banned_by_name,
+        removed_by_name: ban.removed_by_name,
+        removed_by_reason: ban.removed_by_reason,
+        removed_by_date: ban.removed_by_date,
+        time: ban.time,
+        until: ban.until,
+        template: ban.template,
+        server_scope: ban.server_scope,
+        silent: ban.silent,
+        ipban: ban.ipban,
+        active: ban.active
+    };
 }
 
 /**
@@ -229,7 +253,7 @@ export async function searchBans(
     offset: number = 0,
     onlyActive: boolean = false,
     searchQuery?: string
-): Promise<{ items: BanEntry[], total: number }> {
+): Promise<{ items: BanEntryPublic[], total: number }> {
     const pool = useMySQL(CONNECTION_NAME);
 
     let whereClause = 'WHERE 1=1';
@@ -261,8 +285,91 @@ export async function searchBans(
     // Добавляем никнейм для каждого забаненного пользователя
     items = await Promise.all(items.map(ban => enrichBanWithNickname(ban)));
 
+    // Преобразуем в публичный формат
+    const publicItems = items.map(toPublicBan);
+
     return {
-        items,
+        items: publicItems,
         total
     };
 }
+
+/**
+ * Получить всех пользователей, забаненных более чем на минимальную длительность
+ * Используется для администраторских операций (удаление скинов и т.д.)
+ */
+export async function getBannedUsersWithMinDuration(minDurationMs: number): Promise<BanEntry[]> {
+    const pool = useMySQL(CONNECTION_NAME);
+    const now = Date.now();
+
+    // Логика: для каждого активного бана проверяем длительность
+    // Если until = -1 (навсегда), то длительность бесконечна
+    // Иначе length = until - time
+
+    const sql = `
+        SELECT * FROM \`litebans_bans\`
+        WHERE \`active\` = 1 AND (
+            \`until\` <= 0 OR 
+            (\`until\` - \`time\`) >= ?
+        )
+        ORDER BY \`id\` DESC
+    `;
+
+    try {
+        const [rows] = await pool.execute<RowDataPacket[]>(sql, [minDurationMs]);
+        let bans = rows as BanEntry[];
+
+        // Добавляем nicknames для каждого
+        bans = await Promise.all(bans.map(ban => enrichBanWithNickname(ban)));
+
+        return bans;
+    } catch (e: any) {
+        throw createError({
+            statusCode: 500,
+            statusMessage: 'Database error getting banned users',
+            data: { statusMessageRu: 'Ошибка при получении забаненных пользователей', error: e.message }
+        });
+    }
+}
+
+/**
+ * Удалить скины для всех пользователей, забаненных более чем на X мс
+ * Возвращает количество удаленных скинов и список пользователей
+ */
+export async function deleteSkinsBatchForBannedUsers(minDurationMs: number): Promise<{
+    deleted: number;
+    users: Array<{ uuid: string; uuid_nickname?: string; reason: string }>;
+    errors: Array<{ uuid: string; error: string }>;
+}> {
+    const bans = await getBannedUsersWithMinDuration(minDurationMs);
+
+    let deleted = 0;
+    const errors: Array<{ uuid: string; error: string }> = [];
+    const users = bans.map(ban => ({
+        uuid: ban.uuid,
+        uuid_nickname: ban.uuid_nickname,
+        reason: ban.reason
+    }));
+
+    // Параллельно удаляем скины
+    await Promise.all(
+        bans.map(async (ban) => {
+            try {
+                await deleteSkin(ban.uuid);
+                deleted++;
+            } catch (e: any) {
+                errors.push({
+                    uuid: ban.uuid,
+                    error: e.message || 'Unknown error'
+                });
+            }
+        })
+    );
+
+    return {
+        deleted,
+        users,
+        errors
+    };
+}
+

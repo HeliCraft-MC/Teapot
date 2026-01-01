@@ -1,7 +1,6 @@
 import { createBan } from "~/utils/banlist.utils";
-import { checkAuth } from "~/utils/auth.utils";
 import { resolveUuid, getUserByUUID, isUserAdmin } from "~/utils/user.utils";
-import { CreateBanDto } from "~/interfaces/banlist.types";
+import { CreateBanDto, BanEntryPublic } from "~/interfaces/banlist.types";
 
 defineRouteMeta({
     openAPI: {
@@ -50,10 +49,10 @@ defineRouteMeta({
 })
 
 export default defineEventHandler(async (event) => {
-    const accessToken = getHeader(event, 'Authorization')?.replace('Bearer ', '');
-    const userUuid = getHeader(event, 'x-uuid');
+    // Авторизация и UUID уже проверены middleware
+    const userUuid = event.context.auth?.uuid;
 
-    if (!accessToken || !userUuid) {
+    if (!userUuid) {
         throw createError({
             statusCode: 401,
             statusMessage: 'Unauthorized',
@@ -61,21 +60,13 @@ export default defineEventHandler(async (event) => {
         });
     }
 
-    try {
-        await checkAuth(userUuid, accessToken);
-        const admin = await isUserAdmin(userUuid);
-        if (!admin) {
-            throw createError({
-                statusCode: 403,
-                statusMessage: 'Forbidden',
-                data: { statusMessageRu: 'Нет прав доступа' }
-            });
-        }
-    } catch (e: any) {
+    // Проверяем права администратора
+    const admin = await isUserAdmin(userUuid);
+    if (!admin) {
         throw createError({
-            statusCode: e.statusCode || 401,
-            statusMessage: e.statusMessage || 'Unauthorized',
-            data: e.data || { statusMessageRu: 'Ошибка авторизации' }
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Нет прав доступа' }
         });
     }
 
@@ -91,24 +82,40 @@ export default defineEventHandler(async (event) => {
     const targetUuid = await resolveUuid(body.target);
     const adminUser = await getUserByUUID(userUuid);
 
-    // Optional: check if already banned to avoid dupes? (LiteBans might handle it or allow multiple)
-    // We'll proceed as usual, database handles inserts.
-
     const dto: CreateBanDto = {
         targetUuid: targetUuid,
-        targetIp: body.ip, // Optional
+        targetIp: body.ip,
         reason: body.reason,
         adminUuid: userUuid,
         adminName: adminUser.NICKNAME || 'Admin',
-        durationMs: parseInt(body.duration), // milliseconds
+        durationMs: parseInt(body.duration),
         isIpBan: body.ipBan || false,
         silent: body.silent || false
     };
 
-    const banId = await createBan(dto);
+    const ban = await createBan(dto);
+
+    // Преобразуем в публичный формат (без IP и uuid админа)
+    const publicBan: BanEntryPublic = {
+        id: ban.id,
+        uuid: ban.uuid,
+        uuid_nickname: ban.uuid_nickname,
+        reason: ban.reason,
+        banned_by_name: ban.banned_by_name,
+        removed_by_name: ban.removed_by_name,
+        removed_by_reason: ban.removed_by_reason,
+        removed_by_date: ban.removed_by_date,
+        time: ban.time,
+        until: ban.until,
+        template: ban.template,
+        server_scope: ban.server_scope,
+        silent: ban.silent,
+        ipban: ban.ipban,
+        active: ban.active
+    };
 
     return {
         success: true,
-        ban: banId
+        ban: publicBan
     };
 });

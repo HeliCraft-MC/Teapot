@@ -1,5 +1,4 @@
 import { removeBan } from "~/utils/banlist.utils";
-import { checkAuth } from "~/utils/auth.utils";
 import { getUserByUUID, isUserAdmin } from "~/utils/user.utils";
 
 defineRouteMeta({
@@ -44,11 +43,11 @@ defineRouteMeta({
 })
 
 export default defineEventHandler(async (event) => {
-    const accessToken = getHeader(event, 'Authorization')?.replace('Bearer ', '');
-    const userUuid = getHeader(event, 'x-uuid');
+    // Авторизация и UUID уже проверены middleware
+    const userUuid = event.context.auth?.uuid;
     const id = getRouterParam(event, 'id');
 
-    if (!accessToken || !userUuid || !id) {
+    if (!userUuid || !id) {
         throw createError({
             statusCode: 401,
             statusMessage: 'Unauthorized',
@@ -56,21 +55,13 @@ export default defineEventHandler(async (event) => {
         });
     }
 
-    try {
-        await checkAuth(userUuid, accessToken);
-        const admin = await isUserAdmin(userUuid);
-        if (!admin) {
-            throw createError({
-                statusCode: 403,
-                statusMessage: 'Forbidden',
-                data: { statusMessageRu: 'Нет прав доступа' }
-            });
-        }
-    } catch (e: any) {
+    // Проверяем права администратора
+    const admin = await isUserAdmin(userUuid);
+    if (!admin) {
         throw createError({
-            statusCode: e.statusCode || 401,
-            statusMessage: e.statusMessage || 'Unauthorized',
-            data: e.data || { statusMessageRu: 'Ошибка авторизации' }
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+            data: { statusMessageRu: 'Нет прав доступа' }
         });
     }
 
