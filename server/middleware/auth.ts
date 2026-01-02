@@ -20,6 +20,7 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/server\/status$/ },
     { pattern: /^\/flags(\/.*)?$/ },
     { pattern: /^\/state\/[^/]+$/, methods: ['GET'] },
+    { pattern: /^\/state\/[^/]+\/some$/, methods: ['GET'] },
     { pattern: /^\/user\/[^/]+$/, methods: ['GET'] }, // /user/UUID
     { pattern: /^\/order\/list(?:\?.*)?$/, methods: ['GET'] },
     { pattern: /^\/warrant\/list(?:\?.*)?$/, methods: ['GET'] },
@@ -28,6 +29,9 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/alliances\/list(?:\?.*)?$/, methods: ['GET'] },
     { pattern: /^\/alliances\/[^/]+\/members(?:\?.*)?$/, methods: ['GET'] },
     { pattern: /^\/alliances\/[0-9a-fA-F-]+$/, methods: ['GET'] },
+    { pattern: /^\/user\/[^/]+\/(?:head|skin(?:\/head)?)(?:\.png)?$/, methods: ['GET', 'HEAD'] },
+    { pattern: /^\/banlist(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/banlist\/check(?:\?.*)?$/, methods: ['GET'] }
 ]
 
 export default defineEventHandler(async (event) => {

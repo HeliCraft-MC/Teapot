@@ -393,6 +393,8 @@ export async function declareNewState(
 }
 
 
+
+
 /**
  * Вспомогательная функция для преобразования flag_link.
  * Добавляет префикс /distant-api/ к локальным ссылкам.
@@ -437,6 +439,94 @@ export type StateFilter = Partial<{
     freeEntryDescription: string | null
     flagLink: string
 }>
+
+export async function editState(
+    state: Partial<IState>,
+): Promise<boolean> {
+
+    if (!state.uuid) {
+        throw createError({ statusCode: 422, statusMessage: 'Missing uuid', data: { statusMessageRu: 'Отсутствует uuid' } })
+    }
+
+    if (state.name) await assertState(state.name, true)
+    if (state.color_hex) assertColor(state.color_hex)
+
+    let flagLink: string | null = null
+    if (state.flag_link) {
+        if (typeof state.flag_link === 'string') {
+            const isLocal = state.flag_link.startsWith('/')
+            const isRemote = state.flag_link.startsWith('http://') || state.flag_link.startsWith('https://')
+            if ((!isLocal && !isRemote) || !state.flag_link.endsWith('.png')) {
+                throw createError({ statusCode: 422, statusMessage: 'Invalid flag link', data: { statusMessageRu: 'Неверная ссылка на флаг' } })
+            }
+            flagLink = state.flag_link
+        } else if (Buffer.isBuffer(state.flag_link)) {
+            // If flag is a Buffer, convert it to uploads
+            flagLink = await flagToUploads(state.flag_link)
+        } else {
+            throw createError({
+                statusCode: 422,
+                statusMessage: 'Invalid flag type',
+                data: { statusMessageRu: 'Неверный тип флага' }
+            })
+        }
+    } else {
+        flagLink = null
+    }
+
+    if (state.telegram_link) {
+        if (typeof state.telegram_link === 'string') {
+            const ok = state.telegram_link.startsWith('https://t.me/')
+                || state.telegram_link.startsWith('https://telegram.me/')
+                || state.telegram_link.startsWith('http://t.me/')
+                || state.telegram_link.startsWith('t.me/')
+                || state.telegram_link.startsWith('@')
+            if (!ok) {
+                throw createError({ statusCode: 422, statusMessage: 'Invalid telegram link', data: { statusMessageRu: 'Неверная ссылка на Telegram' } })
+            }
+        }
+    }
+
+    const pool = useMySQL('states')
+
+    const clauses: string[] = []
+    const values: any[] = []
+
+    // Собираем SET-часть динамически, исключая служебные поля
+    for (const [key, value] of Object.entries(state)) {
+        if (value !== undefined && key !== 'uuid' && key !== 'created' && key !== 'updated') {
+            if (key === 'flag_link') {
+                // Используем рассчитанный flagLink (string|null), а не сырое значение
+                clauses.push('flag_link = ?')
+                values.push(flagLink)
+            } else {
+                clauses.push(`${key} = ?`)
+                values.push(value)
+            }
+        }
+    }
+
+    // Обновляем updated всегда
+    clauses.push('updated = ?')
+    values.push(Date.now())
+
+    // uuid в WHERE
+    values.push(state.uuid)
+
+    const sql = `UPDATE states SET ${clauses.join(', ')} WHERE uuid = ?`
+
+    try {
+        const [res] = await pool.execute<ResultSetHeader>(sql, values)
+        if ((res as ResultSetHeader).affectedRows === 0) {
+            throw createError({ statusCode: 404, statusMessage: 'State not found', data: { statusMessageRu: 'Государство не найдено' } })
+        }
+    } catch (error) {
+        throw createError({ statusCode: 500, statusMessage: 'Error occurred when requesting database. S-U:524', data: { statusMessageRu: 'Внутренняя ошибка S-U:524'} })
+    }
+
+    return true
+}
+
 
 /**
  * Поиск государств с фильтрами и пагинацией.
@@ -524,6 +614,24 @@ export async function searchStatesByFilters(
 
 export async function listStates(startAt = 0, limit = 100): Promise<IState[]> {
     return searchStatesByFilters({}, startAt, limit)
+}
+
+export async function listSomeStates(amount = 1): Promise<IState[]> {
+    const pool = useMySQL('states');
+
+    const sql = `SELECT * FROM states ORDER BY RAND() LIMIT ${amount};`;
+    const [rows] = await pool.execute<RowDataPacket[]>(sql);
+    const states = rows as IState[];
+
+    if (!states || states.length === 0) {
+        return [];
+    }
+
+    for (const state of states) {
+        state.flag_link = transformFlagLink(state.flag_link);
+    }
+
+    return states;
 }
 
 
