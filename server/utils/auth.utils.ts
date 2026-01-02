@@ -1,7 +1,8 @@
 import bcrypt from 'bcrypt'
 import { AuthUser } from '~/interfaces/mysql.types'
 import {useMySQL} from "~/plugins/mySql";
-import {RowDataPacket} from "mysql2";
+import {ResultSetHeader, RowDataPacket} from "mysql2";
+import { v4 as uuidv4 } from 'uuid';
 
 
 /**
@@ -47,6 +48,87 @@ export async function loginUser(nickname: string, password: string) {
 
     const tokens = generateTokens(user);
 
+    return { tokens, uuid: user.UUID, nickname: user.NICKNAME };
+}
+
+
+/**
+ * Registers a new user by creating an account with the provided nickname and password.
+ * Throws an error if the nickname is already taken or validation fails.
+ *
+ * @param {string} nickname - The desired nickname for the new user.
+ * @param {string} password - The plain-text password for the new user.
+ * @return {Promise<{ tokens: object, uuid: string, nickname: string }>} A promise that resolves to an object containing the user's tokens, UUID, and nickname.
+ * @throws {Error} Throws an error if the nickname is already taken or validation fails.
+ */
+export async function registerUser(nickname: string, password: string) {
+    const pool = useMySQL('default');
+    
+    // Validate nickname length
+    if (!nickname || nickname.trim().length < 3) {
+        throw createError({
+            statusCode: 422,
+            statusMessage: 'Nickname is too short (minimum 3 characters)',
+            data: {
+                statusMessageRu: 'Ник слишком короткий (минимум 3 символа)',
+            }
+        });
+    }
+    
+    // Validate password length
+    if (!password || password.length < 6) {
+        throw createError({
+            statusCode: 422,
+            statusMessage: 'Password is too short (minimum 6 characters)',
+            data: {
+                statusMessageRu: 'Пароль слишком короткий (минимум 6 символов)',
+            }
+        });
+    }
+    
+    const lowerCaseNickname = nickname.toLowerCase();
+    
+    // Check if nickname already exists
+    const checkSql = 'SELECT 1 FROM `AUTH` WHERE `LOWERCASENICKNAME` = ?';
+    const [checkRows] = await pool.execute<RowDataPacket[]>(checkSql, [lowerCaseNickname]);
+    
+    if (checkRows.length > 0) {
+        throw createError({
+            statusCode: 409,
+            statusMessage: 'Nickname already taken',
+            data: {
+                statusMessageRu: 'Никнейм уже занят',
+            }
+        });
+    }
+    
+    // Generate UUID and hash password
+    const uuid = uuidv4();
+    const hash = await bcrypt.hash(password, 10);
+    const regDate = Date.now();
+    
+    // Insert new user into database
+    const insertSql = `
+        INSERT INTO \`AUTH\` 
+        (\`NICKNAME\`, \`LOWERCASENICKNAME\`, \`HASH\`, \`UUID\`, \`REGDATE\`)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+    
+    await pool.execute<ResultSetHeader>(insertSql, [
+        nickname,
+        lowerCaseNickname,
+        hash,
+        uuid,
+        regDate
+    ]);
+    
+    // Retrieve the newly created user to generate tokens
+    const selectSql = 'SELECT * FROM `AUTH` WHERE `UUID` = ?';
+    const [rows] = await pool.execute<RowDataPacket[]>(selectSql, [uuid]);
+    const user = rows[0] as AuthUser;
+    
+    const tokens = generateTokens(user);
+    
     return { tokens, uuid: user.UUID, nickname: user.NICKNAME };
 }
 
