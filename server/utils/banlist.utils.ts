@@ -142,8 +142,8 @@ export async function createBan(dto: CreateBanDto): Promise<BanEntry> {
             \`banned_by_uuid\`, \`banned_by_name\`, 
             \`time\`, \`until\`, 
             \`active\`, \`ipban\`, \`silent\`,
-            \`server_scope\`, \`server_origin\`
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, '*', NULL)
+            \`server_scope\`, \`server_origin\`, \`ipban_wildcard\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, '*', NULL, 0)
     `;
 
     const params = [
