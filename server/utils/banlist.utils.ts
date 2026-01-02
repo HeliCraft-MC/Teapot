@@ -133,8 +133,8 @@ export async function createBan(dto: CreateBanDto): Promise<BanEntry> {
         });
     }
 
-    const cleanTargetUuid = normalizeUuid(dto.targetUuid);
-    const cleanAdminUuid = normalizeUuid(dto.adminUuid);
+    const cleanTargetUuid = dto.targetUuid;
+    const cleanAdminUuid = dto.adminUuid;
 
     const sql = `
         INSERT INTO \`litebans_bans\` (
@@ -181,7 +181,7 @@ export async function createBan(dto: CreateBanDto): Promise<BanEntry> {
  */
 export async function removeBan(banId: number, adminUuid: string = "[Web]", adminName: string = "[Web]", reason: string = "Unbanned via Web") {
     const pool = useMySQL(CONNECTION_NAME);
-    const cleanAdminUuid = normalizeUuid(adminUuid);
+    const cleanAdminUuid = adminUuid;
 
     const dateObj = new Date();
     const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
