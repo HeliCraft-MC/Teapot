@@ -6,14 +6,19 @@ import sharp from 'sharp'
 import { v4 as uuidv4 } from 'uuid'
 import type { SkinMeta } from '~/interfaces/skins.types'
 
+function normalizeUuid(raw: string): string {
+  return raw.replace(/-/g, '').toLowerCase()
+}
+
 /**
  * Получить мета-данные скина по UUID
  */
 export function getSkin(uuid: string): SkinMeta | undefined {
   const db = useSkinSQLite()
+  const normalizedUuid = normalizeUuid(uuid)
   return db
     .prepare('SELECT * FROM skins WHERE uuid = ?')
-    .get([uuid]) as SkinMeta | undefined
+    .get([normalizedUuid]) as SkinMeta | undefined
 }
 
 /**
@@ -46,21 +51,35 @@ async function deleteSkinsFiles(uploadDir: string, paths: string[]): Promise<voi
 
 /**
  * Полностью удаляет скин пользователя (файлы и запись в БД)
+ * Возвращает true если скин был удалён, false если скина не было
  */
-export async function deleteSkin(uuid: string): Promise<void> {
+export async function deleteSkin(uuid: string): Promise<boolean> {
   const { uploadDir = './uploads' } = useRuntimeConfig()
   const db = useSkinSQLite()
+  const normalizedUuid = normalizeUuid(uuid)
+
+  console.log(`[SkinUtils] Attempting to delete skin for UUID: ${uuid} (normalized: ${normalizedUuid})`)
 
   // 1. Находим файлы
-  const rows = db.prepare('SELECT path FROM skins WHERE uuid = ?').all(uuid) as { path: string }[]
-  if (rows.length === 0) return
+  const rows = db.prepare('SELECT path FROM skins WHERE uuid = ?').all(normalizedUuid) as { path: string }[]
+
+  if (rows.length === 0) {
+    console.log(`[SkinUtils] No skin found for UUID: ${normalizedUuid}`)
+    return false
+  }
+
+  console.log(`[SkinUtils] Found ${rows.length} skin record(s) for UUID: ${normalizedUuid}`)
 
   // 2. Удаляем из БД
-  db.prepare('DELETE FROM skins WHERE uuid = ?').run(uuid)
+  const result = db.prepare('DELETE FROM skins WHERE uuid = ?').run(normalizedUuid)
+  console.log(`[SkinUtils] Deleted ${result.changes} record(s) from DB`)
 
   // 3. Удаляем файлы
   const paths = rows.map(r => r.path)
+  console.log(`[SkinUtils] Deleting files: ${paths.join(', ')}`)
   await deleteSkinsFiles(uploadDir, paths)
+
+  return true
 }
 
 /**
@@ -78,13 +97,14 @@ export async function saveSkin(
   const { uploadDir = './uploads' } = useRuntimeConfig()
   const db = useSkinSQLite()
   const skinsRoot = join(uploadDir, 'skins')
+  const normalizedUuid = normalizeUuid(uuid)
 
   // Выбираем старые пути и удаляем их из БД
-  const oldRows = db.prepare('SELECT path FROM skins WHERE uuid = ?').all(uuid) as { path: string }[]
+  const oldRows = db.prepare('SELECT path FROM skins WHERE uuid = ?').all(normalizedUuid) as { path: string }[]
   const pathsToDelete = oldRows.map(r => r.path)
 
   // Удаляем из БД
-  db.prepare('DELETE FROM skins WHERE uuid = ?').run(uuid)
+  db.prepare('DELETE FROM skins WHERE uuid = ?').run(normalizedUuid)
 
   // Удаляем файлы
   await deleteSkinsFiles(uploadDir, pathsToDelete)
@@ -101,13 +121,13 @@ export async function saveSkin(
   // Вставляем новую запись в БД
   db.prepare(
     'INSERT INTO skins(uuid, path, mime, size) VALUES(?, ?, ?, ?)'
-  ).run(uuid, relPath, mime, data.length)
+  ).run(normalizedUuid, relPath, mime, data.length)
 
   // Очищаем пустые директории
   await removeEmptyDirs(skinsRoot)
 
   return {
-    uuid,
+    uuid: normalizedUuid,
     path: relPath,
     mime,
     size: data.length,

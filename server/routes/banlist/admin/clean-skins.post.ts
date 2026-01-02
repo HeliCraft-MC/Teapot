@@ -25,6 +25,7 @@ defineRouteMeta({
                             properties: {
                                 success: { type: 'boolean', example: true },
                                 deleted: { type: 'integer', description: 'Количество удаленных скинов' },
+                                skipped: { type: 'integer', description: 'Количество пропущенных (скин не найден)' },
                                 total: { type: 'integer', description: 'Всего пользователей с такой длительностью бана' },
                                 users: {
                                     type: 'array',
@@ -60,7 +61,6 @@ defineRouteMeta({
 })
 
 export default defineEventHandler(async (event) => {
-    // Авторизация проверяется middleware, UUID получаем из контекста
     const userUuid = event.context.auth?.uuid;
 
     if (!userUuid) {
@@ -107,6 +107,7 @@ export default defineEventHandler(async (event) => {
         return {
             success: true,
             deleted: result.deleted,
+            skipped: result.skipped,
             total: result.users.length,
             users: result.users,
             errors: result.errors.length > 0 ? result.errors : undefined

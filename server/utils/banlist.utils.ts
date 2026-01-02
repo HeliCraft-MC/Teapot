@@ -338,12 +338,14 @@ export async function getBannedUsersWithMinDuration(minDurationMs: number): Prom
  */
 export async function deleteSkinsBatchForBannedUsers(minDurationMs: number): Promise<{
     deleted: number;
+    skipped: number;
     users: Array<{ uuid: string; uuid_nickname?: string; reason: string }>;
     errors: Array<{ uuid: string; error: string }>;
 }> {
     const bans = await getBannedUsersWithMinDuration(minDurationMs);
 
     let deleted = 0;
+    let skipped = 0;
     const errors: Array<{ uuid: string; error: string }> = [];
     const users = bans.map(ban => ({
         uuid: ban.uuid,
@@ -355,8 +357,12 @@ export async function deleteSkinsBatchForBannedUsers(minDurationMs: number): Pro
     await Promise.all(
         bans.map(async (ban) => {
             try {
-                await deleteSkin(ban.uuid);
-                deleted++;
+                const wasDeleted = await deleteSkin(ban.uuid);
+                if (wasDeleted) {
+                    deleted++;
+                } else {
+                    skipped++; // Скин не найден (уже удалён или не был загружен)
+                }
             } catch (e: any) {
                 errors.push({
                     uuid: ban.uuid,
@@ -368,6 +374,7 @@ export async function deleteSkinsBatchForBannedUsers(minDurationMs: number): Pro
 
     return {
         deleted,
+        skipped,
         users,
         errors
     };
