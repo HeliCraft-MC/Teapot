@@ -123,7 +123,7 @@ export async function createBan(dto: CreateBanDto): Promise<BanEntry> {
     const pool = useMySQL(CONNECTION_NAME);
 
     const now = Date.now();
-    const until = dto.durationMs <= 0 ? -1 : (now + dto.durationMs);
+    const until = dto.durationMs <= 0 ? 0 : (now + dto.durationMs);
 
     // Удаление скина, если бан дольше чем на 30 дней (30 * 24 * 60 * 60 * 1000 = 2592000000 ms)
     // Или если перманентный (<= 0)
@@ -154,7 +154,7 @@ export async function createBan(dto: CreateBanDto): Promise<BanEntry> {
         dto.adminName,
         now,
         until,
-        dto.isIpBan ? 1 : 0,
+        1,
         dto.silent ? 1 : 0
     ];
 
