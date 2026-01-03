@@ -199,9 +199,12 @@ export async function checkAuth(uuid: string, accessToken: string) {
         });
     }
 
-    if (verifyTokenWithCredentials(accessToken, user)) {
+    const isValid = await verifyTokenWithCredentials(accessToken, user);
+    console.log('[checkAuth] Token verification result:', isValid, 'for UUID:', uuid);
+    if (isValid) {
         return true;
     } else {
+        console.log('[checkAuth] Token verification failed for UUID:', uuid);
         throw createError({
             statusCode: 401,
             statusMessage: 'Not authorized',
