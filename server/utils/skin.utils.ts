@@ -5,6 +5,7 @@ import { useSkinSQLite } from '~/plugins/skinSqlite'
 import sharp from 'sharp'
 import { v4 as uuidv4 } from 'uuid'
 import type { SkinMeta } from '~/interfaces/skins.types'
+import { useFileService, removeEmptyDirs } from './file.service'
 
 function normalizeUuid(raw: string): string {
   return raw.replace(/-/g, '').toLowerCase()
@@ -22,30 +23,12 @@ export function getSkin(uuid: string): SkinMeta | undefined {
 }
 
 /**
- * Рекурсивно удаляет пустые директории внутри заданного корня
- */
-async function removeEmptyDirs(root: string): Promise<void> {
-  const entries = await fsp.readdir(root, { withFileTypes: true })
-  for (const entry of entries) {
-    const fullPath = join(root, entry.name)
-    if (entry.isDirectory()) {
-      await removeEmptyDirs(fullPath)
-      const rem = await fsp.readdir(fullPath)
-      if (rem.length === 0) {
-        await fsp.rmdir(fullPath)
-      }
-    }
-  }
-}
-
-/**
  * Удаляет файлы скинов по списку путей
  */
 async function deleteSkinsFiles(uploadDir: string, paths: string[]): Promise<void> {
+  const fileService = useFileService()
   await Promise.all(
-    paths.map(path =>
-      fsp.rm(join(uploadDir, path), { force: true }).catch(() => { })
-    )
+    paths.map(path => fileService.deleteFile(path).catch(() => { }))
   )
 }
 
@@ -98,6 +81,7 @@ export async function saveSkin(
   const db = useSkinSQLite()
   const skinsRoot = join(uploadDir, 'skins')
   const normalizedUuid = normalizeUuid(uuid)
+  const fileService = useFileService()
 
   // Выбираем старые пути и удаляем их из БД
   const oldRows = db.prepare('SELECT path FROM skins WHERE uuid = ?').all(normalizedUuid) as { path: string }[]
@@ -109,26 +93,23 @@ export async function saveSkin(
   // Удаляем файлы
   await deleteSkinsFiles(uploadDir, pathsToDelete)
 
-  // Генерируем путь для нового файла
-  const hex = uuidv4().replace(/-/g, '')
-  const relPath = `skins/${hex.slice(0, 2)}/${hex.slice(2, 4)}/${hex.slice(4, 6)}/${hex}.png`
-  const absPath = join(uploadDir, relPath)
-
-  // Создаём директории и пишем файл
-  await fsp.mkdir(dirname(absPath), { recursive: true })
-  await fsp.writeFile(absPath, data)
+  // Сохраняем новый файл через file service
+  const fileMeta = await fileService.saveFile(data, {
+    subDir: 'skins',
+    extension: 'png'
+  })
 
   // Вставляем новую запись в БД
   db.prepare(
     'INSERT INTO skins(uuid, path, mime, size) VALUES(?, ?, ?, ?)'
-  ).run(normalizedUuid, relPath, mime, data.length)
+  ).run(normalizedUuid, fileMeta.path, mime, data.length)
 
   // Очищаем пустые директории
   await removeEmptyDirs(skinsRoot)
 
   return {
     uuid: normalizedUuid,
-    path: relPath,
+    path: fileMeta.path,
     mime,
     size: data.length,
     created: Math.floor(Date.now() / 1000)

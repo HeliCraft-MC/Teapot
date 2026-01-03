@@ -31,7 +31,14 @@ const exclude: ExcludeRule[] = [
     { pattern: /^\/alliances\/[0-9a-fA-F-]+$/, methods: ['GET'] },
     { pattern: /^\/user\/[^/]+\/(?:head|skin(?:\/head)?)(?:\.png)?$/, methods: ['GET', 'HEAD'] },
     { pattern: /^\/banlist(?:\?.*)?$/, methods: ['GET'] },
-    { pattern: /^\/banlist\/check(?:\?.*)?$/, methods: ['GET'] }
+    { pattern: /^\/banlist\/check(?:\?.*)?$/, methods: ['GET'] },
+    // Gallery public routes
+    { pattern: /^\/gallery(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/gallery\/ids(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/gallery\/categories(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/gallery\/seasons(?:\?.*)?$/, methods: ['GET'] },
+    { pattern: /^\/gallery\/[0-9a-fA-F-]+$/, methods: ['GET'] },
+    { pattern: /^\/gallery\/[0-9a-fA-F-]+\/image$/, methods: ['GET'] }
 ]
 
 export default defineEventHandler(async (event) => {
