@@ -78,13 +78,37 @@ export default defineEventHandler(async (event) => {
 
   if (admin) {
     // Admin can update all fields
+    // Validate and parse coordinates
+    let coord_x: number | undefined
+    let coord_y: number | undefined
+    let coord_z: number | undefined
+    
+    if (body.coord_x !== undefined) {
+      coord_x = parseInt(body.coord_x)
+      if (isNaN(coord_x)) {
+        throw createError({ statusCode: 400, statusMessage: 'Invalid coord_x value' })
+      }
+    }
+    if (body.coord_y !== undefined) {
+      coord_y = parseInt(body.coord_y)
+      if (isNaN(coord_y)) {
+        throw createError({ statusCode: 400, statusMessage: 'Invalid coord_y value' })
+      }
+    }
+    if (body.coord_z !== undefined) {
+      coord_z = parseInt(body.coord_z)
+      if (isNaN(coord_z)) {
+        throw createError({ statusCode: 400, statusMessage: 'Invalid coord_z value' })
+      }
+    }
+
     return await updateGalleryImageByAdmin(id, {
       description: body.description,
       category: body.category,
       season: body.season,
-      coord_x: body.coord_x !== undefined ? parseInt(body.coord_x) : undefined,
-      coord_y: body.coord_y !== undefined ? parseInt(body.coord_y) : undefined,
-      coord_z: body.coord_z !== undefined ? parseInt(body.coord_z) : undefined,
+      coord_x,
+      coord_y,
+      coord_z,
       involved_players: body.involved_players
     })
   } else {

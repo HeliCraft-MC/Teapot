@@ -23,14 +23,6 @@ export function getSkin(uuid: string): SkinMeta | undefined {
 }
 
 /**
- * Рекурсивно удаляет пустые директории внутри заданного корня
- * @deprecated Use removeEmptyDirs from file.service instead
- */
-async function removeEmptyDirsLegacy(root: string): Promise<void> {
-  await removeEmptyDirs(root)
-}
-
-/**
  * Удаляет файлы скинов по списку путей
  */
 async function deleteSkinsFiles(uploadDir: string, paths: string[]): Promise<void> {

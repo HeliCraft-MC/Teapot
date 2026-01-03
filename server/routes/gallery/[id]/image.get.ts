@@ -1,4 +1,3 @@
-import { promises as fsp } from 'node:fs'
 import { useFileService } from '~/utils/file.service'
 import { getGalleryImage, canViewImage } from '~/utils/gallery.utils'
 import { isUserAdmin } from '~/utils/user.utils'

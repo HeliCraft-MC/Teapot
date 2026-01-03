@@ -1,4 +1,4 @@
-import { join, dirname } from 'pathe'
+import { join, dirname, resolve, normalize } from 'pathe'
 import { promises as fsp } from 'node:fs'
 import { v4 as uuidv4 } from 'uuid'
 import type { IFileService, FileMeta, FileSaveOptions } from '~/interfaces/file.service'
@@ -10,7 +10,26 @@ class FileService implements IFileService {
   private uploadDir: string
 
   constructor(uploadDir: string) {
-    this.uploadDir = uploadDir
+    this.uploadDir = resolve(uploadDir)
+  }
+
+  /**
+   * Validate that a path is within the upload directory (prevent directory traversal)
+   * @param relativePath Relative path to validate
+   * @returns Absolute path if valid
+   * @throws Error if path traversal detected
+   */
+  private validateAndResolvePath(relativePath: string): string {
+    const normalizedPath = normalize(relativePath)
+    const absPath = join(this.uploadDir, normalizedPath)
+    const resolvedPath = resolve(absPath)
+    
+    // Ensure the resolved path is within the upload directory
+    if (!resolvedPath.startsWith(this.uploadDir)) {
+      throw new Error('Invalid path: directory traversal attempt detected')
+    }
+    
+    return resolvedPath
   }
 
   /**
@@ -27,7 +46,7 @@ class FileService implements IFileService {
   async saveFile(data: Buffer, options: FileSaveOptions): Promise<FileMeta> {
     const extension = options.extension || 'bin'
     const relPath = this.generateFilePath(options.subDir, extension)
-    const absPath = join(this.uploadDir, relPath)
+    const absPath = this.validateAndResolvePath(relPath)
 
     // Create directories and write file
     await fsp.mkdir(dirname(absPath), { recursive: true })
@@ -43,7 +62,7 @@ class FileService implements IFileService {
   }
 
   async deleteFile(relativePath: string): Promise<boolean> {
-    const absPath = join(this.uploadDir, relativePath)
+    const absPath = this.validateAndResolvePath(relativePath)
     try {
       await fsp.rm(absPath, { force: true })
       // Clean up empty parent directories
@@ -56,7 +75,7 @@ class FileService implements IFileService {
   }
 
   async readFile(relativePath: string): Promise<Buffer | null> {
-    const absPath = join(this.uploadDir, relativePath)
+    const absPath = this.validateAndResolvePath(relativePath)
     try {
       return await fsp.readFile(absPath)
     } catch (err: any) {
@@ -66,7 +85,7 @@ class FileService implements IFileService {
   }
 
   async fileExists(relativePath: string): Promise<boolean> {
-    const absPath = join(this.uploadDir, relativePath)
+    const absPath = this.validateAndResolvePath(relativePath)
     try {
       await fsp.access(absPath)
       return true
@@ -76,7 +95,7 @@ class FileService implements IFileService {
   }
 
   getAbsolutePath(relativePath: string): string {
-    return join(this.uploadDir, relativePath)
+    return this.validateAndResolvePath(relativePath)
   }
 
   /**
