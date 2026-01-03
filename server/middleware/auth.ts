@@ -58,12 +58,20 @@ export default defineEventHandler(async (event) => {
     }
 
     /* 2. Bearer */
+    // Рекурсивная функция для удаления всех дублей "Bearer "
+    const stripBearerPrefix = (token: string): string => {
+        if (token.startsWith('Bearer ')) {
+            return stripBearerPrefix(token.slice(7))
+        }
+        return token
+    }
+
     // Сначала пробуем получить токен из заголовка авторизации
     const authHeader = getHeader(event, 'authorization')
     let accessToken: string | undefined
 
     if (authHeader?.startsWith('Bearer ')) {
-        accessToken = authHeader.slice(7)
+        accessToken = stripBearerPrefix(authHeader)
         console.log('[auth middleware] Token from Authorization header:', accessToken.substring(0, 20) + '...')
     }
 
