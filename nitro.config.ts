@@ -1,11 +1,7 @@
 //https://nitro.unjs.io/config
-import dotenv from 'dotenv'
-import path from 'path';
-
-dotenv.config({ path: path.join(__dirname, '.env') });
-
 export default defineNitroConfig({
     srcDir: "server",
+    compatibilityDate: '2026-01-07',
     imports: {
         autoImport: true
     },
@@ -26,43 +22,47 @@ export default defineNitroConfig({
             version: '1.0'
         }
     },
+    preset: 'bun',
+    externals: {
+        inline: ['bun:sqlite']
+    },
     runtimeConfig: {
         teapotCommit: process.env.NODE_COMMIT_TEAPOT || 'unknown',
-        jwtSecret: process.env.JWT_SECRET,
-        uploads: process.env.UPLOAD_DIR,
-        sqliteSkinPath: process.env.SQLITE_PATH,
-        databaseDebug: Boolean(process.env.DATABASE_DEBUG) || false,
-        telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
-        telegramChatId: process.env.TELEGRAM_CHAT_ID,
-        telegramThreadId: process.env.TELEGRAM_THREAD_ID,
-        telegramTopicSkins: process.env.TELEGRAM_TOPIC_SKINS,
-        publicApiUrl: process.env.PUBLIC_API_URL,
+        jwtSecret: 'supersecret',
+        uploads: 'public/uploads',
+        sqliteSkinPath: 'data/sqlite.db',
+        databaseDebug: false,
+        telegramBotToken: '000000000:aaaaaaaaaaaaaaaaaaaaaaaa',
+        telegramChatId: '00000000',
+        telegramThreadId: '0',
+        telegramTopicSkins: '0',
+        publicApiUrl: 'http://localhost:3000',
         database: {
             default: {
                 options: {
-                    host: process.env.MYSQL_HOST,
-                    port: Number(process.env.MYSQL_PORT),
-                    user: process.env.MYSQL_USER,
-                    password: process.env.MYSQL_PASSWORD,
-                    database: process.env.MYSQL_DATABASE,
+                    host: '127.0.0.1',
+                    port: 3306,
+                    user: 'user',
+                    password: 'pass',
+                    database: 'defaultDb',
                 }
             },
             states: {
                 options: {
-                    host: process.env.STATES_MYSQL_HOST,
-                    port: Number(process.env.STATES_MYSQL_PORT),
-                    user: process.env.STATES_MYSQL_USER,
-                    password: process.env.STATES_MYSQL_PASSWORD,
-                    database: process.env.STATES_MYSQL_DATABASE,
+                    host: '127.0.0.1',
+                    port: 3306,
+                    user: 'user',
+                    password: 'pass',
+                    database: 'statesDb',
                 }
             },
             banlist: {
                 options: {
-                    host: process.env.BANLIST_MYSQL_HOST,
-                    port: Number(process.env.BANLIST_MYSQL_PORT),
-                    user: process.env.BANLIST_MYSQL_USER,
-                    password: process.env.BANLIST_MYSQL_PASSWORD,
-                    database: process.env.BANLIST_MYSQL_DATABASE,
+                    host: '127.0.0.1',
+                    port: 3306,
+                    user: 'user',
+                    password: 'pass',
+                    database: 'banlistDb',
                 }
             }
         },

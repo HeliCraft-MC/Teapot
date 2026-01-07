@@ -16,13 +16,14 @@ export function useMySQL(connectionName: string): mysql.Pool {
     return connections[connectionName];
 }
 
-export default defineNitroPlugin((nitro) => {
+export default defineNitroPlugin(async (nitro) => {
     const config = useRuntimeConfig().database;
     const connectionsNames = Object.keys(config);
     console.log("[MySQL Plugin] Initializing " + connectionsNames.length + " MySQL connections...");
-    connectionsNames.forEach(connection => {
+
+    for (const connection of connectionsNames) {
         try {
-            connections[connection] = mysql.createPool({
+            const pool = mysql.createPool({
                 host: config[connection].options.host,
                 port: config[connection].options.port,
                 user: config[connection].options.user,
@@ -35,12 +36,18 @@ export default defineNitroPlugin((nitro) => {
                 keepAliveInitialDelay: 0,
             });
 
+            // Test connection to database
+            const conn = await pool.getConnection();
+            conn.release();
+
+            connections[connection] = pool;
+
             console.log(`[MySQL Plugin] Connection ${connection} initialized.`);
         } catch (err) {
             console.error(`[MySQL Plugin] Error initializing connection ${connection}:`, err);
             throw new Error(`Failed to initialize MySQL connection "${connection}": ${err.message}`);
         }
-    })
+    }
 
     console.log("[MySQL Plugin] Connected to " + Object.keys(connections).length + " databases.");
 

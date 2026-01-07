@@ -1,23 +1,22 @@
 {
   "private": true,
   "scripts": {
-    "build": "NODE_COMMIT=$(git rev-parse HEAD) nitro build",
-    "dev": "nitro dev",
-    "prepare": "nitro prepare",
-    "preview": "node .output/server/index.mjs"
+    "build": "NODE_COMMIT=$(git rev-parse HEAD) bun --bun nitro build",
+    "dev": "bun --bun nitro dev",
+    "prepare": "bun --bun nitro prepare",
+    "preview": "bun --bun .output/server/index.mjs",
+    "docker:start": "scripts/docker-start.bat",
+    "docker:start:sh": "scripts/docker-start.sh"
   },
   "devDependencies": {
-    "nitropack": "latest"
-  },
-  "packageManager": "pnpm@10.27.0",
-  "dependencies": {
+    "nitropack": "latest",
+    "@types/bun": "latest",
     "@types/bcrypt": "^5.0.2",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^24.0.7",
+    "@types/node": "^24.0.7"
+  },
+  "dependencies": {
     "bcrypt": "^6.0.0",
-    "better-sqlite3": "^11.10.0",
-    "dotenv": "^16.5.0",
     "file-type": "^20.5.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.1",
