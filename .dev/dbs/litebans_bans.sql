@@ -83,3 +83,21 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+--
+-- Sample data for table `litebans_bans`
+--
+
+SET FOREIGN_KEY_CHECKS=0;
+INSERT INTO `litebans_bans` (`uuid`, `ip`, `reason`, `banned_by_uuid`, `banned_by_name`, `removed_by_uuid`, `removed_by_name`, `removed_by_reason`, `removed_by_date`, `time`, `until`, `template`, `server_scope`, `server_origin`, `silent`, `ipban`, `ipban_wildcard`, `active`) VALUES
+('96939126-8872-4011-a059-000000000001', '192.168.1.101', 'Hacking', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704067200000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000002', '10.0.0.5', 'Spamming', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704153600000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000003', '172.16.0.23', 'Griefing', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704240000000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000004', '192.168.0.55', 'Swearing', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704326400000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000005', '10.1.1.100', 'X-Ray', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704412800000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000006', '172.20.10.4', 'Fly Hacks', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704499200000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000007', '192.168.100.12', 'Kill Aura', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704585600000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000008', '10.2.3.4', 'Duping', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704672000000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000009', '172.18.0.1', 'Botting', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704758400000, -1, 255, 'global', 'server1', 0, 0, 0, 1),
+('96939126-8872-4011-a059-000000000010', '192.168.50.50', 'Advertising', 'Console', 'Console', NULL, NULL, NULL, CURRENT_TIMESTAMP, 1704844800000, -1, 255, 'global', 'server1', 0, 0, 0, 1);
+SET FOREIGN_KEY_CHECKS=1;

@@ -38,8 +38,8 @@
 ## 🚀 Run Locally
 
 ### 0. Prerequisites
-- Node.js (latest)
-- MySQL
+- Bun (latest)
+- MySQL or MariaDB Server
 
 ### 0. Set up MySQL
 
@@ -60,7 +60,7 @@ sql scripts for creating the databases and tables can be found in the `.dev/dbs`
 ### 3.Install dependencies
 
 ```bash
-  npm install
+  bun i
 ```
 
 
@@ -74,7 +74,7 @@ nano .env
 ### 5. Start the development server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 ---

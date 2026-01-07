@@ -1,10 +1,9 @@
 import { dirname } from 'pathe'
 import { mkdirSync } from 'node:fs'
-import SQLite from 'better-sqlite3'
-import type { Database as SQLiteDatabase } from 'better-sqlite3'
+import { Database } from 'bun:sqlite'
 
 // eslint-disable-next-line import/no-mutable-exports
-let db!: SQLiteDatabase
+let db!: Database
 
 export default defineNitroPlugin((nitroApp) => {
   const { sqliteSkinPath = './db/skins.sqlite' } = useRuntimeConfig()
@@ -12,17 +11,16 @@ export default defineNitroPlugin((nitroApp) => {
   // Гарантируем существование директории, где будет лежать БД
   mkdirSync(dirname(sqliteSkinPath), { recursive: true })
 
-  // В предыдущей версии передавался неверный option { nativeBinding: true }.
-  // Если custom-binding не нужен — оставляем конструктор без опций.
-  db = new SQLite(sqliteSkinPath)
+  // Используем нативный bun:sqlite
+  db = new Database(sqliteSkinPath, { create: true })
 
   // Базовые PRAGMA-настройки
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
+  db.run('PRAGMA journal_mode = WAL;')
+  db.run('PRAGMA foreign_keys = ON;')
 
   // Авто-миграция (таблица skins)
   console.log('SQLite: creating table skins')
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS skins (
       uuid     TEXT PRIMARY KEY,
       path     TEXT NOT NULL,
@@ -34,7 +32,7 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Авто-миграция (таблица gallery)
   console.log('SQLite: creating table gallery')
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS gallery (
       id               TEXT PRIMARY KEY,
       path             TEXT NOT NULL,
@@ -55,18 +53,17 @@ export default defineNitroPlugin((nitroApp) => {
   `)
 
   // Индексы для gallery
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_gallery_status ON gallery(status);
-    CREATE INDEX IF NOT EXISTS idx_gallery_owner ON gallery(owner_uuid);
-    CREATE INDEX IF NOT EXISTS idx_gallery_category ON gallery(category);
-    CREATE INDEX IF NOT EXISTS idx_gallery_season ON gallery(season);
-  `)
+  db.run('CREATE INDEX IF NOT EXISTS idx_gallery_status ON gallery(status);')
+  db.run('CREATE INDEX IF NOT EXISTS idx_gallery_owner ON gallery(owner_uuid);')
+  db.run('CREATE INDEX IF NOT EXISTS idx_gallery_category ON gallery(category);')
+  db.run('CREATE INDEX IF NOT EXISTS idx_gallery_season ON gallery(season);')
 
   // Публикуем экземпляр в контексте Nitro
+  // @ts-ignore
   nitroApp.sqlite = db
 })
 
-export function useSkinSQLite(): SQLiteDatabase {
+export function useSkinSQLite(): Database {
   if (!db) {
     throw new Error('SQLite not initialised')
   }

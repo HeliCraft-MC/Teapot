@@ -46,13 +46,13 @@ export default defineEventHandler(async (event) => {
     const url    = event.path || event.node.req.url || '/'
     const method = (event.method || event.node.req.method || 'GET').toUpperCase()
 
-    console.log(`[auth middleware] ${method} ${url}`)
+    //console.log(`[auth middleware] ${method} ${url}`)
 
     /* 1. исключаем public-роуты */
     for (const rule of exclude) {
         if (rule.pattern.test(url) &&
             (!rule.methods || rule.methods.includes(method))) {
-            console.log(`[auth middleware] Excluded by rule: ${rule.pattern}`)
+            //console.log(`[auth middleware] Excluded by rule: ${rule.pattern}`)
             return
         }
     }
@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
 
     if (authHeader?.startsWith('Bearer ')) {
         accessToken = stripBearerPrefix(authHeader)
-        console.log('[auth middleware] Token from Authorization header:', accessToken.substring(0, 20) + '...')
+        //console.log('[auth middleware] Token from Authorization header:', accessToken.substring(0, 20) + '...')
     }
 
     // Если не найден в заголовке, пробуем cookies (только accessToken, не refreshToken!)
@@ -80,12 +80,12 @@ export default defineEventHandler(async (event) => {
         const cookies = parseCookies(event)
         accessToken = cookies['auth.token']
         if (accessToken) {
-            console.log('[auth middleware] Token from cookie:', accessToken.substring(0, 20) + '...')
+            //console.log('[auth middleware] Token from cookie:', accessToken.substring(0, 20) + '...')
         }
     }
 
     if (!accessToken) {
-        console.log('[auth middleware] No token found - Missing Bearer')
+        //console.log('[auth middleware] No token found - Missing Bearer')
         throw createError({ statusCode: 401, statusMessage: 'Missing Bearer' })
     }
 
@@ -93,18 +93,18 @@ export default defineEventHandler(async (event) => {
     let payload: any
     try {
         payload = await verifyToken(accessToken)
-        console.log('[auth middleware] JWT verified, payload UUID:', payload?.UUID)
+        //console.log('[auth middleware] JWT verified, payload UUID:', payload?.UUID)
     } catch (err) {
-        console.log('[auth middleware] JWT verification failed:', err)
+        //console.log('[auth middleware] JWT verification failed:', err)
         throw createError({ statusCode: 401, statusMessage: 'Invalid token' })
     }
     const { UUID } = payload ?? {}
     if (!UUID) {
-        console.log('[auth middleware] No UUID in payload')
+        //console.log('[auth middleware] No UUID in payload')
         throw createError({ statusCode: 401, statusMessage: 'Invalid payload' })
     }
     await checkAuth(UUID, accessToken)
-    console.log('[auth middleware] Auth check passed for UUID:', UUID)
+    //console.log('[auth middleware] Auth check passed for UUID:', UUID)
 
     /* 4. кладём данные в контекст */
     event.context.auth = { uuid: UUID }

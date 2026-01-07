@@ -2,6 +2,6 @@
 {
   "extends": "./.nitro/types/tsconfig.json",
   "compilerOptions": {
-    "types": ["./types/nitro"]
+    "types": ["./types/nitro", "bun-types"]
   }
 }
