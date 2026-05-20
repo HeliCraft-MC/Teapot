@@ -7,6 +7,7 @@ defineRouteMeta({
     ],
     requestBody: {
       description: 'Fields to update',
+      content: {},
       required: true
     },
     responses: {
